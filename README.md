@@ -138,18 +138,19 @@ For more troubleshooting, see [service-whispercpp/README.md](./service-whispercp
 
 ## Development
 
-```bash
-# Install everything (service + extension)
-make install
+### Extension Development
 
-# Check status
-make status
+```bash
+# See help for detailed targets to install/remove the extension files as needed:
+make help
 
 # View logs
 journalctl -f | grep speech2text
 ```
 
-**Service development**: See [service-whispercpp/README.md](./service-whispercpp/README.md) for detailed instructions on setting up the service in development mode with `uv`.
+### Service development
+
+See [service-whispercpp/README.md](./service-whispercpp/README.md) for detailed instructions on setting up the service in development mode with `uv`.
 
 ## Uninstallation
 
