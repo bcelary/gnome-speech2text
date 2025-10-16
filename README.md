@@ -40,43 +40,22 @@ sudo dnf install python3 pipx ffmpeg python3-dbus python3-gobject wl-clipboard x
 
 This extension requires a [whisper.cpp](https://github.com/ggerganov/whisper.cpp) server with models in `~/.cache/whisper.cpp/`.
 
+For detailed build instructions and requirements, see the [whisper.cpp repository](https://github.com/ggerganov/whisper.cpp).
+
 **Quick setup:**
 
 ```bash
-# Build whisper.cpp server
+# Build and install whisper.cpp server
 git clone https://github.com/ggerganov/whisper.cpp
 cd whisper.cpp
 make server
+sudo make install
 
 # Download models (e.g., 'base' model)
 bash ./models/download-ggml-model.sh base ~/.cache/whisper.cpp
 ```
 
-For detailed whisper.cpp setup (including VAD models, GPU support, etc.), see [service-whispercpp/README.md](./service-whispercpp/README.md).
-
-### 3. Install WhisperCpp Service
-
-**From source (recommended):**
-
-```bash
-git clone https://github.com/bcelary/gnome-speech2text.git
-cd gnome-speech2text/service-whispercpp
-./install.sh --from-source
-```
-
-**Or quick curl install:**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/bcelary/gnome-speech2text/main/service-whispercpp/install.sh | bash
-```
-
-> **Note**: PyPI package coming soon. For now, install from source.
-
-The service will auto-start the whisper.cpp server when needed.
-
-### 4. Install Extension
-
-**From source:**
+### 3. Install Service & Extension
 
 ```bash
 git clone https://github.com/bcelary/gnome-speech2text.git
@@ -84,23 +63,31 @@ cd gnome-speech2text
 make install
 ```
 
-**Then restart GNOME Shell:**
+This installs both the D-Bus service (via pipx) and the GNOME Shell extension.
 
-- X11: Press `Alt+F2`, type `r`, press Enter
-- Wayland: Log out and back in
+**Restart GNOME Shell:**
+
+- **X11:** Press `Alt+F2`, type `r`, press Enter
+- **Wayland:** Log out and back in
+
+**Note:** For manual service installation or development setup, see [service-whispercpp/README.md](./service-whispercpp/README.md).
 
 ## Configuration
 
-Configure the whisper.cpp service via environment variables:
+### Service Configuration
+
+The default settings work for most users. To customize model selection, language, or Voice Activity Detection, configure these environment variables:
+
+Create or edit `~/.config/environment.d/custom-env.conf`:
 
 ```bash
-export WHISPER_MODEL="small"           # Model: tiny, base, small, medium, large-v3-turbo
-export WHISPER_LANGUAGE="auto"         # Language: auto, en, es, fr, de, etc.
-export WHISPER_VAD_MODEL="auto"        # VAD: auto (recommended), none, or specific model
-export WHISPER_SERVER_URL="http://localhost:8080"  # Server URL
+WHISPER_MODEL=small                       # Model: tiny, base, small, medium, large-v3-turbo
+WHISPER_LANGUAGE=auto                     # Language: auto, en, es, fr, de, etc.
+WHISPER_VAD_MODEL=auto                    # VAD: auto (recommended), none, or specific model
+WHISPER_SERVER_URL=http://localhost:8080  # Server URL
 ```
 
-Add these to `~/.bashrc` or `~/.profile` to make them persistent.
+Then log out and back in for changes to take effect.
 
 ### Extension Preferences
 
@@ -144,6 +131,7 @@ gnome-extensions enable gnome-speech2text@bcelary.github
 ```
 
 **Text insertion not working on Wayland:**
+
 Text insertion requires X11. On Wayland, use "Copy to Clipboard" mode instead.
 
 For more troubleshooting, see [service-whispercpp/README.md](./service-whispercpp/README.md).
@@ -151,7 +139,7 @@ For more troubleshooting, see [service-whispercpp/README.md](./service-whispercp
 ## Development
 
 ```bash
-# Install extension
+# Install everything (service + extension)
 make install
 
 # Check status
@@ -166,13 +154,13 @@ journalctl -f | grep speech2text
 ## Uninstallation
 
 ```bash
-# Remove service
-gnome-speech2text-whispercpp-uninstall
-pipx uninstall gnome-speech2text-service-whispercpp
-
-# Remove extension
+cd gnome-speech2text
 make uninstall
 ```
+
+This removes everything: extension, service files, pipx package, and resets settings.
+
+**Note:** whisper.cpp binaries are not removed. To remove them, run `sudo make uninstall` from your whisper.cpp directory.
 
 ## Architecture
 

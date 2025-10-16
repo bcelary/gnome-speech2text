@@ -17,7 +17,8 @@ help:
 	@echo "======================================="
 	@echo ""
 	@echo "Quick Start:"
-	@echo "  make install-service install"
+	@echo "  make install    # Install everything (service + extension)"
+	@echo "  make uninstall  # Uninstall everything"
 	@echo ""
 	@echo "Atomic targets:"
 	@echo "  copy-files       - Copy extension files to installation directory"
@@ -25,12 +26,12 @@ help:
 	@echo "  remove-extension - Remove extension directory"
 	@echo "  reset-settings   - Reset GSettings to defaults"
 	@echo "  kill-service     - Stop running service process"
-	@echo "  remove-service   - Remove service files and directories"
-	@echo "  install-service  - Install service from local source"
 	@echo ""
 	@echo "Convenience targets:"
-	@echo "  install          - copy-files + compile-schemas"
-	@echo "  uninstall        - remove-extension + kill-service + remove-service + reset-settings"
+	@echo "  install          - Install everything (install-service + copy-files + compile-schemas)"
+	@echo "  uninstall        - Uninstall everything (remove-extension + kill-service + remove-service + reset-settings)"
+	@echo "  install-service  - Install service via pipx from GitHub"
+	@echo "  remove-service   - Remove service files and pipx package"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  status           - Show installation status"
@@ -91,37 +92,37 @@ kill-service:
 		echo "No service process found"; \
 	fi
 
-# Remove service files and directories
+# Remove service files and pipx package
 remove-service:
-	@echo "Removing service files..."
-	@if [ -d "$(HOME)/.local/share/gnome-speech2text-service-whispercpp" ]; then \
-		rm -rf $(HOME)/.local/share/gnome-speech2text-service-whispercpp; \
-		echo "Service directory removed"; \
+	@echo "Removing service..."
+	@if command -v gnome-speech2text-whispercpp-uninstall >/dev/null 2>&1; then \
+		yes | gnome-speech2text-whispercpp-uninstall || true; \
+		echo "Service files removed"; \
+	else \
+		echo "Service uninstall script not found (service may not be installed)"; \
 	fi
-	@if [ -f "$(HOME)/.local/share/dbus-1/services/org.gnome.Shell.Extensions.Speech2TextWhisperCpp.service" ]; then \
-		rm $(HOME)/.local/share/dbus-1/services/org.gnome.Shell.Extensions.Speech2TextWhisperCpp.service; \
-		echo "D-Bus service file removed"; \
+	@if command -v pipx >/dev/null 2>&1 && pipx list 2>/dev/null | grep -q "gnome-speech2text-service-whispercpp"; then \
+		echo "Removing pipx package..."; \
+		pipx uninstall gnome-speech2text-service-whispercpp || true; \
+		echo "pipx package removed"; \
+	else \
+		echo "pipx package not found (already uninstalled or not installed via pipx)"; \
 	fi
-	@if [ -f "$(HOME)/.local/share/applications/gnome-speech2text-service-whispercpp.desktop" ]; then \
-		rm $(HOME)/.local/share/applications/gnome-speech2text-service-whispercpp.desktop; \
-		echo "Desktop entry removed"; \
-	fi
-	@echo "Note: To fully uninstall pipx service, run: pipx uninstall gnome-speech2text-service-whispercpp"
 
-# Install service from local source directory
+# Install service via pipx (from GitHub)
 install-service:
-	@echo "Installing service from source..."
+	@echo "Installing service via pipx from GitHub..."
 	@if [ -f "./service-whispercpp/install.sh" ]; then \
-		./service-whispercpp/install.sh --from-source; \
+		./service-whispercpp/install.sh; \
 	else \
 		echo "ERROR: install.sh not found in service-whispercpp/"; \
 		exit 1; \
 	fi
-	@echo "Service installed from source"
+	@echo "Service installed via pipx"
 
-# Convenience: Install extension (copy files + compile schemas)
-install: copy-files compile-schemas
-	@echo "Extension installation complete"
+# Convenience: Install everything (service + extension)
+install: install-service copy-files compile-schemas
+	@echo "Complete installation finished (service + extension)"
 
 # Convenience: Complete uninstall (extension + service + settings)
 uninstall: remove-extension kill-service remove-service reset-settings
