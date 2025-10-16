@@ -5,7 +5,7 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 // D-Bus interface XML for the speech2text service
 const Speech2TextInterface = `
 <node>
-  <interface name="org.gnome.Shell.Extensions.Speech2Text">
+  <interface name="org.gnome.Shell.Extensions.Speech2TextWhisperCpp">
     <method name="StartRecording">
       <arg direction="in" type="i" name="duration" />
       <arg direction="in" type="b" name="copy_to_clipboard" />
@@ -71,8 +71,8 @@ export class DBusManager {
 
       this.dbusProxy = new Speech2TextProxy(
         Gio.DBus.session,
-        "org.gnome.Shell.Extensions.Speech2Text",
-        "/org/gnome/Shell/Extensions/Speech2Text"
+        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+        "/org/gnome/Shell/Extensions/Speech2TextWhisperCpp"
       );
 
       // Test if the service is actually reachable
@@ -184,7 +184,7 @@ export class DBusManager {
     if (!this.dbusProxy) {
       return {
         available: false,
-        error: "Service not installed. Please run the installation first.",
+        error: "Service not available",
       };
     }
 
@@ -214,15 +214,13 @@ export class DBusManager {
     } catch (e) {
       console.error(`Error checking service status: ${e}`);
 
-      // Provide more helpful error messages
       if (
         e.message &&
         e.message.includes("org.freedesktop.DBus.Error.ServiceUnknown")
       ) {
         return {
           available: false,
-          error:
-            "Service installed but not running. Please restart GNOME Shell:\n• X11: Alt+F2, type 'r', press Enter\n• Wayland: Log out and log back in",
+          error: "Service not running",
         };
       } else if (
         e.message &&
@@ -230,15 +228,12 @@ export class DBusManager {
       ) {
         return {
           available: false,
-          error:
-            "Service not responding. Please restart GNOME Shell or check if dependencies are installed.",
+          error: "Service not responding",
         };
       } else {
         return {
           available: false,
-          error: `Service error: ${
-            e.message || "Unknown error"
-          }. Try restarting GNOME Shell.`,
+          error: `Service error: ${e.message || "Unknown error"}`,
         };
       }
     }
@@ -360,7 +355,7 @@ export class DBusManager {
 
       // Get the user's home directory
       const homeDir = GLib.get_home_dir();
-      const servicePath = `${homeDir}/.local/share/gnome-speech2text-service/gnome-speech2text-service`;
+      const servicePath = `${homeDir}/.local/share/gnome-speech2text-service-whispercpp/gnome-speech2text-service-whispercpp`;
 
       // Check if the service file exists
       const serviceFile = Gio.File.new_for_path(servicePath);
@@ -394,9 +389,9 @@ export class DBusManager {
           Gio.DBus.session,
           Gio.DBusProxyFlags.NONE,
           null,
-          "org.gnome.Shell.Extensions.Speech2Text",
-          "/org/gnome/Shell/Extensions/Speech2Text",
-          "org.gnome.Shell.Extensions.Speech2Text",
+          "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+          "/org/gnome/Shell/Extensions/Speech2TextWhisperCpp",
+          "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
           null
         );
 
