@@ -148,7 +148,7 @@ make help
 journalctl -f | grep speech2text
 ```
 
-### Service development
+### Service Development
 
 See [service-whispercpp/README.md](./service-whispercpp/README.md) for detailed instructions on setting up the service in development mode with `uv`.
 
