@@ -4,7 +4,7 @@
 # This script installs the service using pipx
 #
 # Usage:
-#   ./install.sh              # Install from PyPI (default)
+#   ./install.sh              # Install from GitHub (default)
 #   ./install.sh --from-source # Install from local source directory
 #
 # For development workflow, see README.md for uv-based editable install
@@ -26,7 +26,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --from-source    Install from local source directory"
             echo "  -h, --help       Show this help message"
             echo ""
-            echo "Default: Install from PyPI"
+            echo "Default: Install from GitHub"
             exit 0
             ;;
         *)
@@ -46,11 +46,10 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 print_header() {
-    echo -e "\n"
     echo -e "${BLUE}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${BLUE}║   GNOME Speech2Text WhisperCpp Service Installer (pipx)      ║${NC}"
     echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
-    echo -e "\n"
+    echo
 }
 
 print_status() {
@@ -84,7 +83,7 @@ print_header
 if [ "$INSTALL_FROM_SOURCE" = true ]; then
     print_info "Installing WhisperCpp service from local source directory using pipx"
 else
-    print_info "Installing WhisperCpp service from PyPI using pipx"
+    print_info "Installing WhisperCpp service from GitHub using pipx"
 fi
 print_info "pipx is the recommended way to install Python applications"
 echo
@@ -110,6 +109,25 @@ if ! command_exists ffmpeg; then
     missing_packages+=("ffmpeg")
 fi
 
+# Check for clipboard tools (session-type specific)
+SESSION_TYPE="${XDG_SESSION_TYPE:-}"
+clipboard_found=false
+
+if [ "$SESSION_TYPE" = "wayland" ]; then
+    if command_exists wl-copy; then
+        clipboard_found=true
+    else
+        missing_packages+=("wl-clipboard")
+    fi
+else
+    # X11 or unknown - check for xclip or xsel
+    if command_exists xclip || command_exists xsel; then
+        clipboard_found=true
+    else
+        missing_packages+=("xclip or xsel")
+    fi
+fi
+
 if [ ${#missing_packages[@]} -gt 0 ]; then
     print_error "Missing required system packages: ${missing_packages[*]}"
     echo
@@ -131,6 +149,13 @@ if [ ${#missing_packages[@]} -gt 0 ]; then
 fi
 
 print_status "All required system packages are installed"
+
+# Check for optional packages
+if [ "$SESSION_TYPE" != "wayland" ] && ! command_exists xdotool; then
+    print_warning "Optional package not found: xdotool (needed for text insertion on X11)"
+    echo "  Install with: sudo apt install xdotool (or equivalent for your distro)"
+fi
+
 echo
 
 # Step 1: Check/Install pipx
@@ -161,6 +186,8 @@ else
     pipx ensurepath || true
 
     print_status "pipx installed successfully"
+    print_warning "You may need to restart your shell or run: source ~/.bashrc"
+    echo "  (This ensures pipx-installed commands are available)"
 fi
 
 echo
@@ -181,14 +208,22 @@ if [ "$INSTALL_FROM_SOURCE" = true ]; then
     INSTALL_SOURCE="$SCRIPT_DIR"
     print_info "Installing from: $INSTALL_SOURCE"
 else
-    INSTALL_SOURCE="gnome-speech2text-service-whispercpp"
-    print_info "Installing from PyPI"
+    INSTALL_SOURCE="git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service-whispercpp"
+    print_info "Installing from GitHub"
 fi
 
 # Check if already installed
 if pipx list | grep -q "gnome-speech2text-service-whispercpp"; then
     print_warning "Service is already installed. Upgrading..."
-    pipx upgrade --system-site-packages "$INSTALL_SOURCE" || error_exit "Failed to upgrade service"
+
+    # For local source installs, use --force to ensure changes are picked up
+    if [ "$INSTALL_FROM_SOURCE" = true ]; then
+        print_info "Using --force to reinstall from local source..."
+        pipx install --force --system-site-packages "$INSTALL_SOURCE" || error_exit "Failed to reinstall service"
+    else
+        pipx upgrade gnome-speech2text-service-whispercpp || error_exit "Failed to upgrade service"
+    fi
+
     print_status "Service upgraded successfully"
 else
     print_info "Installing gnome-speech2text-service-whispercpp..."
@@ -207,7 +242,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Run the setup command
 if command_exists gnome-speech2text-whispercpp-setup; then
-    gnome-speech2text-whispercpp-setup || print_warning "Setup completed with warnings"
+    gnome-speech2text-whispercpp-setup || error_exit "Setup command failed. D-Bus integration could not be configured"
 else
     error_exit "Setup command not found. Please check pipx installation"
 fi

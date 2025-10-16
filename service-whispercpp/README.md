@@ -53,32 +53,41 @@ sudo pacman -S python-dbus python-gobject ffmpeg wl-clipboard xdotool xclip
 
 ### For Users
 
-**Option 1: Install from source** (recommended, PyPI package coming soon):
+**Option 1: Quick curl install** (easiest):
+
+```bash
+# One-line install from GitHub
+curl -fsSL https://raw.githubusercontent.com/bcelary/gnome-speech2text/main/service-whispercpp/install.sh | bash
+```
+
+This will:
+- Check and install pipx if needed
+- Install the service directly from GitHub
+- Set up D-Bus integration automatically
+
+**Option 2: Pipx install from GitHub**:
+
+If you already have pipx installed and prefer manual control:
+
+```bash
+# Install directly from GitHub
+pipx install --system-site-packages 'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service-whispercpp'
+
+# Run setup to configure D-Bus
+gnome-speech2text-whispercpp-setup
+```
+
+**Option 3: Install from local source**:
+
+For developers who want to test local changes:
 
 ```bash
 # Clone the repository
 git clone https://github.com/bcelary/gnome-speech2text.git
 cd gnome-speech2text/service-whispercpp
+
+# Install from local directory
 ./install.sh --from-source
-```
-
-**Option 2: Quick curl install** (not yet available):
-
-> **Note**: PyPI package will be published in the future. For now, use Option 1.
-
-```bash
-# Coming soon:
-# curl -fsSL https://raw.githubusercontent.com/bcelary/gnome-speech2text/main/service-whispercpp/install.sh | bash
-```
-
-**Option 3: Manual install from PyPI** (not yet available):
-
-> **Note**: PyPI package will be published in the future. For now, use Option 1.
-
-```bash
-# Coming soon:
-# pipx install --system-site-packages gnome-speech2text-service-whispercpp
-# gnome-speech2text-whispercpp-setup
 ```
 
 ### For Development

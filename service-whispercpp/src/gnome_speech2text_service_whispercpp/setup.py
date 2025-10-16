@@ -13,8 +13,6 @@ Can be run standalone after pipx installation:
     gnome-speech2text-whispercpp-uninstall  # Cleanup before uninstalling
 """
 
-import importlib.util
-import os
 import shutil
 import subprocess
 import sys
@@ -114,72 +112,6 @@ Categories=Utility;
         return False
 
 
-def verify_dependencies() -> bool:
-    """Verify system dependencies are installed."""
-    print("\n🔍 Verifying system dependencies...")
-
-    missing = []
-
-    # Check FFmpeg
-    if not shutil.which("ffmpeg"):
-        missing.append("ffmpeg")
-    else:
-        print("  ✅ FFmpeg found")
-
-    # Check for clipboard tools (session-type specific)
-    session_type = os.environ.get("XDG_SESSION_TYPE", "")
-    clipboard_found = False
-
-    if session_type == "wayland":
-        if shutil.which("wl-copy"):
-            print("  ✅ wl-copy found (Wayland clipboard)")
-            clipboard_found = True
-        else:
-            missing.append("wl-clipboard")
-    else:
-        # X11 or unknown - check for xclip/xsel
-        for tool in ["xclip", "xsel"]:
-            if shutil.which(tool):
-                print(f"  ✅ {tool} found (X11 clipboard)")
-                clipboard_found = True
-                break
-
-        if not clipboard_found:
-            missing.append("xclip or xsel")
-
-        # Check xdotool for X11 text insertion
-        if shutil.which("xdotool"):
-            print("  ✅ xdotool found (text insertion)")
-        else:
-            missing.append("xdotool (optional for text insertion)")
-
-    # Check Python D-Bus bindings
-    if importlib.util.find_spec("dbus") is not None:
-        print("  ✅ python3-dbus found")
-    else:
-        missing.append("python3-dbus")
-
-    # Check PyGObject
-    try:
-        import gi
-
-        gi.require_version("GLib", "2.0")
-        print("  ✅ python3-gi (PyGObject) found")
-    except (ImportError, ValueError):
-        missing.append("python3-gi")
-
-    if missing:
-        print("\n⚠️  Missing system dependencies:")
-        for dep in missing:
-            print(f"    - {dep}")
-        print("\nInstall with:")
-        print(f"  sudo apt install {' '.join(missing)}")
-        return False
-
-    print("\n✅ All system dependencies found")
-    return True
-
-
 def check_whisper_cpp() -> None:
     """Check if whisper.cpp is set up (informational only)."""
     print("\n🔍 Checking whisper.cpp setup...")
@@ -237,19 +169,12 @@ def main() -> int:
 
     print()
 
-    # Verify dependencies
-    deps_ok = verify_dependencies()
-
     # Check whisper.cpp (informational)
     check_whisper_cpp()
 
     print()
     print("=" * 60)
-    if deps_ok:
-        print("✅ Setup completed successfully!")
-    else:
-        print("⚠️  Setup completed with warnings (missing dependencies)")
-        print("   Install missing dependencies and run this again")
+    print("✅ Setup completed successfully!")
     print("=" * 60)
     print()
     print("The D-Bus service will start automatically when the")
@@ -264,9 +189,8 @@ def main() -> int:
     )
     print("    --print-reply /org/gnome/Shell/Extensions/Speech2TextWhisperCpp \\")
     print("    org.gnome.Shell.Extensions.Speech2TextWhisperCpp.GetServiceStatus")
-    print()
 
-    return 0 if deps_ok else 1
+    return 0
 
 
 def remove_dbus_service() -> bool:
