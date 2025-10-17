@@ -462,6 +462,14 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             # Give a small delay for file system to flush the audio data
             time.sleep(0.3)
 
+            # Check if recording was cancelled - skip validation if so
+            if recording_info.get("status") == "cancelled":
+                syslog.syslog(
+                    syslog.LOG_INFO,
+                    f"Recording {recording_id} was cancelled, skipping validation",
+                )
+                return
+
             # Check if we have valid audio with retry logic
             audio_valid = False
             audio_path = Path(audio_file)

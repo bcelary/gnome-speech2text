@@ -307,20 +307,9 @@ def uninstall() -> int:
     print("  • Old service directory (if exists)")
     print("  • Stop any running service processes")
     print()
-    print("⚠️  This will NOT uninstall the pipx package itself.")
-    print("   Run 'pipx uninstall gnome-speech2text-service-whispercpp' after this.")
-    print()
-
-    # Ask for confirmation
-    try:
-        response = input("Continue with cleanup? [y/N]: ").strip().lower()
-        if response not in ["y", "yes"]:
-            print("\n❌ Uninstall cancelled")
-            return 1
-    except (KeyboardInterrupt, EOFError):
-        print("\n\n❌ Uninstall cancelled")
-        return 1
-
+    print("This will NOT uninstall the pipx package itself.")
+    print("   If this command is being run manually, run:")
+    print("   'pipx uninstall gnome-speech2text-service-whispercpp'")
     print()
 
     # Stop running processes
