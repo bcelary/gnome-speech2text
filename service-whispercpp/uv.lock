@@ -328,7 +328,7 @@ wheels = [
 
 [[package]]
 name = "gnome-speech2text-service-whispercpp"
-version = "1.0.0"
+version = "0.9"
 source = { editable = "." }
 dependencies = [
     { name = "requests" },

@@ -1,5 +1,5 @@
 # GNOME Speech2Text Extension - Makefile
-# Automates common development and installation tasks
+# Automates common installation tasks
 
 EXTENSION_UUID = gnome-speech2text@bcelary.github
 EXTENSION_DIR = $(HOME)/.local/share/gnome-shell/extensions/$(EXTENSION_UUID)
@@ -7,238 +7,198 @@ SOURCE_DIR = src
 SCHEMAS_DIR = $(EXTENSION_DIR)/schemas
 SCHEMA_ID = org.gnome.shell.extensions.speech2text
 
+# Colors for output
+RED = \033[0;31m
+GREEN = \033[0;32m
+YELLOW = \033[1;33m
+BLUE = \033[0;34m
+CYAN = \033[0;36m
+NC = \033[0m
+
 .PHONY: help install uninstall clean package status verify-schema \
         copy-files compile-schemas remove-extension reset-settings \
-        kill-service remove-service install-service
+        remove-service install-service install-service-local \
+        upgrade-service install-extension uninstall-extension
 
 # Default target
 help:
-	@echo "GNOME Speech2Text Extension - Makefile"
-	@echo "======================================="
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  GNOME Speech2Text Extension - Makefile$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
 	@echo ""
-	@echo "Quick Start:"
-	@echo "  make install    # Install everything (service + extension)"
-	@echo "  make uninstall  # Uninstall everything"
+	@echo "$(CYAN)Complete Workflows:$(NC)"
+	@echo "  install                  - Install everything (service + extension)"
+	@echo "  uninstall                - Uninstall everything"
+	@echo "  install-extension        - Install extension only"
+	@echo "  uninstall-extension      - Uninstall extension only"
 	@echo ""
-	@echo "Atomic targets:"
-	@echo "  copy-files       - Copy extension files to installation directory"
-	@echo "  compile-schemas  - Compile GSettings schemas"
-	@echo "  remove-extension - Remove extension directory"
-	@echo "  reset-settings   - Reset GSettings to defaults"
-	@echo "  kill-service     - Stop running service process"
+	@echo "$(CYAN)Extension Targets:$(NC)"
+	@echo "  copy-files               - Copy extension files to installation directory"
+	@echo "  compile-schemas          - Compile GSettings schemas"
+	@echo "  remove-extension         - Remove extension directory"
+	@echo "  reset-settings           - Reset GSettings to defaults"
 	@echo ""
-	@echo "Convenience targets:"
-	@echo "  install          - Install everything (install-service + copy-files + compile-schemas)"
-	@echo "  uninstall        - Uninstall everything (remove-extension + kill-service + remove-service + reset-settings)"
-	@echo "  install-service  - Install service via pipx from GitHub"
-	@echo "  remove-service   - Remove service files and pipx package"
+	@echo "$(CYAN)Service Targets:$(NC)"
+	@echo "  install-service          - Install service from GitHub (production)"
+	@echo "  install-service-local    - Install service from local source"
+	@echo "  upgrade-service          - Upgrade existing service"
+	@echo "  remove-service           - Remove service completely"
 	@echo ""
-	@echo "Utilities:"
-	@echo "  status           - Show installation status"
-	@echo "  verify-schema    - Verify schema installation"
-	@echo "  package          - Create distribution package"
-	@echo "  clean            - Remove build artifacts"
+	@echo "$(CYAN)Utilities:$(NC)"
+	@echo "  status                   - Show complete installation status (extension + service)"
+	@echo "  verify-schema            - Verify schema installation"
+	@echo "  package                  - Create distribution package"
+	@echo "  clean                    - Remove build artifacts"
 	@echo ""
-	@echo "Combine atomic targets: make copy-files compile-schemas"
+	@echo "$(BLUE)ℹ️  For service-only operations: cd service-whispercpp && make help$(NC)"
 
 # Copy extension files to installation directory
 copy-files:
-	@echo "Copying extension files to $(EXTENSION_DIR)..."
+	@echo "$(CYAN)Copying extension files...$(NC)"
 	@mkdir -p $(EXTENSION_DIR)
 	@cp -r $(SOURCE_DIR)/* $(EXTENSION_DIR)/
-	@echo "Extension files copied"
+	@echo "$(GREEN)✅ Extension files copied$(NC)"
 
 # Compile GSettings schemas
 compile-schemas:
-	@echo "Compiling GSettings schemas..."
+	@echo "$(CYAN)Compiling GSettings schemas...$(NC)"
 	@if [ ! -d "$(SCHEMAS_DIR)" ]; then \
-		echo "ERROR: Schemas directory not found: $(SCHEMAS_DIR)"; \
-		echo "Run 'make copy-files' first"; \
+		echo "$(RED)❌ Schemas directory not found: $(SCHEMAS_DIR)$(NC)"; \
+		echo "$(BLUE)ℹ️  Run 'make copy-files' first$(NC)"; \
 		exit 1; \
 	fi
 	@glib-compile-schemas $(SCHEMAS_DIR)
 	@if [ -f "$(SCHEMAS_DIR)/gschemas.compiled" ]; then \
-		echo "Schemas compiled"; \
+		echo "$(GREEN)✅ Schemas compiled$(NC)"; \
 	else \
-		echo "ERROR: Schema compilation failed"; \
+		echo "$(RED)❌ Schema compilation failed$(NC)"; \
 		exit 1; \
 	fi
 
 # Remove extension directory
 remove-extension:
-	@echo "Removing extension directory..."
+	@echo "$(CYAN)Removing extension directory...$(NC)"
 	@if [ -d "$(EXTENSION_DIR)" ]; then \
 		rm -rf $(EXTENSION_DIR); \
-		echo "Extension removed"; \
+		echo "$(GREEN)✅ Extension removed$(NC)"; \
 	else \
-		echo "Extension not installed"; \
+		echo "$(BLUE)ℹ️  Extension not installed$(NC)"; \
 	fi
 
 # Reset GSettings to defaults
 reset-settings:
-	@echo "Resetting extension settings..."
-	@gsettings reset $(SCHEMA_ID) first-run 2>/dev/null || echo "Settings already at defaults"
-
-# Stop running service process
-kill-service:
-	@echo "Stopping service process..."
-	@PID=$$(ps aux | grep -E "gnome-speech2text-service|speech2text_service.py" | grep -v grep | awk '{print $$2}' | head -1); \
-	if [ ! -z "$$PID" ]; then \
-		echo "Found process $$PID, terminating..."; \
-		kill $$PID 2>/dev/null || true; \
-		sleep 1; \
-		echo "Process terminated"; \
-	else \
-		echo "No service process found"; \
-	fi
+	@echo "$(CYAN)Resetting extension settings...$(NC)"
+	@gsettings reset $(SCHEMA_ID) first-run 2>/dev/null && echo "$(GREEN)✅ Settings reset$(NC)" || echo "$(BLUE)ℹ️  Settings already at defaults$(NC)"
 
 # Remove service files and pipx package
 remove-service:
-	@echo "Removing service..."
-	@if command -v gnome-speech2text-whispercpp-uninstall >/dev/null 2>&1; then \
-		yes | gnome-speech2text-whispercpp-uninstall || true; \
-		echo "Service files removed"; \
-	else \
-		echo "Service uninstall script not found (service may not be installed)"; \
-	fi
-	@if command -v pipx >/dev/null 2>&1 && pipx list 2>/dev/null | grep -q "gnome-speech2text-service-whispercpp"; then \
-		echo "Removing pipx package..."; \
-		pipx uninstall gnome-speech2text-service-whispercpp || true; \
-		echo "pipx package removed"; \
-	else \
-		echo "pipx package not found (already uninstalled or not installed via pipx)"; \
-	fi
+	@cd service-whispercpp && $(MAKE) uninstall
 
 # Install service via pipx (from GitHub)
 install-service:
-	@echo "Installing service via pipx from GitHub..."
-	@if [ -f "./service-whispercpp/install.sh" ]; then \
-		./service-whispercpp/install.sh; \
-	else \
-		echo "ERROR: install.sh not found in service-whispercpp/"; \
-		exit 1; \
-	fi
-	@echo "Service installed via pipx"
+	@cd service-whispercpp && $(MAKE) install
+
+# Install service from local source
+install-service-local:
+	@cd service-whispercpp && $(MAKE) install-local
+
+# Upgrade service
+upgrade-service:
+	@cd service-whispercpp && $(MAKE) upgrade
 
 # Convenience: Install everything (service + extension)
 install: install-service copy-files compile-schemas
-	@echo "Complete installation finished (service + extension)"
+	@echo ""
+	@echo "$(GREEN)✅ Complete installation finished (service + extension)$(NC)"
 
 # Convenience: Complete uninstall (extension + service + settings)
-uninstall: remove-extension kill-service remove-service reset-settings
-	@echo "Complete uninstall finished"
+uninstall: remove-extension remove-service reset-settings
+	@echo ""
+	@echo "$(GREEN)✅ Complete uninstall finished$(NC)"
+
+# Convenience: Install extension only
+install-extension: copy-files compile-schemas
+	@echo ""
+	@echo "$(GREEN)✅ Extension installation finished$(NC)"
+
+# Convenience: Uninstall extension only
+uninstall-extension: remove-extension reset-settings
+	@echo ""
+	@echo "$(GREEN)✅ Extension uninstall finished$(NC)"
 
 # Create distribution package for GNOME Extensions store
 package:
-	@echo "Creating distribution package..."
+	@echo "$(CYAN)Creating distribution package...$(NC)"
 	@mkdir -p dist && \
 	PACKAGE_DIR="$(EXTENSION_UUID)" && \
 	PACKAGE_FILE="dist/$(EXTENSION_UUID).zip" && \
-	echo "Package directory: $$PACKAGE_DIR" && \
 	rm -rf "$$PACKAGE_DIR" "$$PACKAGE_FILE" && \
 	mkdir -p "$$PACKAGE_DIR" && \
-	echo "Copying extension files..." && \
+	echo "$(BLUE)ℹ️  Copying extension files...$(NC)" && \
 	cp -r $(SOURCE_DIR)/* "$$PACKAGE_DIR/" && \
-	echo "Verifying no installation scripts in package..." && \
+	echo "$(BLUE)ℹ️  Verifying no installation scripts in package...$(NC)" && \
 	if find "$$PACKAGE_DIR/" -name "*.sh" -type f | grep -q .; then \
-		echo "ERROR: Installation scripts found in package!" && \
+		echo "$(RED)❌ Installation scripts found in package!$(NC)" && \
 		find "$$PACKAGE_DIR/" -name "*.sh" -type f && \
 		rm -rf "$$PACKAGE_DIR" && \
 		exit 1; \
 	fi && \
-	echo "Clean package verified" && \
-	echo "Compiling schemas..." && \
+	echo "$(GREEN)✅ Clean package verified$(NC)" && \
+	echo "$(BLUE)ℹ️  Compiling schemas...$(NC)" && \
 	glib-compile-schemas "$$PACKAGE_DIR/schemas/" && \
-	echo "Creating ZIP..." && \
+	echo "$(BLUE)ℹ️  Creating ZIP...$(NC)" && \
 	cd "$$PACKAGE_DIR" && \
-	zip -r "../$$PACKAGE_FILE" . && \
+	zip -r "../$$PACKAGE_FILE" . >/dev/null && \
 	cd .. && \
 	rm -rf "$$PACKAGE_DIR" && \
-	echo "Package created: $$PACKAGE_FILE" && \
-	echo "Size: $$(du -h "$$PACKAGE_FILE" | cut -f1)" && \
-	echo "Contents:" && \
-	unzip -l "$$PACKAGE_FILE" | head -20 && \
-	echo "..." && \
-	echo "Package ready for GNOME Extensions store"
+	echo "$(GREEN)✅ Package created: $$PACKAGE_FILE$(NC)" && \
+	echo "$(BLUE)ℹ️  Size: $$(du -h "$$PACKAGE_FILE" | cut -f1)$(NC)" && \
+	echo "$(BLUE)ℹ️  Package ready for GNOME Extensions store$(NC)"
 
 # Show installation status
 status:
-	@echo "Extension Status:"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  GNOME Speech2Text - Installation Status$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(CYAN)Extension:$(NC)"
 	@echo "  Directory: $(EXTENSION_DIR)"
 	@if [ -d "$(EXTENSION_DIR)" ]; then \
-		echo "  Installed: yes"; \
+		echo "  Installed: $(GREEN)yes$(NC)"; \
 	else \
-		echo "  Installed: no"; \
+		echo "  Installed: $(RED)no$(NC)"; \
 	fi
 	@if [ -f "$(SCHEMAS_DIR)/gschemas.compiled" ]; then \
-		echo "  Schemas: compiled"; \
+		echo "  Schemas: $(GREEN)compiled$(NC)"; \
 	else \
-		echo "  Schemas: not compiled"; \
+		echo "  Schemas: $(RED)not compiled$(NC)"; \
 	fi
 	@echo "  Session: $(XDG_SESSION_TYPE)"
 	@echo ""
-	@echo "Service Status:"
-	@SERVICE_DIR="$(HOME)/.local/share/gnome-speech2text-service-whispercpp"; \
-	DBUS_FILE="$(HOME)/.local/share/dbus-1/services/org.gnome.Shell.Extensions.Speech2TextWhisperCpp.service"; \
-	if [ -d "$$SERVICE_DIR" ]; then \
-		echo "  Installed: yes (local)"; \
-	elif command -v pipx >/dev/null 2>&1 && pipx list | grep -q "gnome-speech2text-service-whispercpp"; then \
-		echo "  Installed: yes (pipx)"; \
-	else \
-		echo "  Installed: no"; \
-	fi; \
-	if [ -f "$$DBUS_FILE" ]; then \
-		echo "  D-Bus: registered"; \
-	else \
-		echo "  D-Bus: not registered"; \
-	fi; \
-	PID=$$(ps aux | grep "gnome-speech2text-service-whispercpp" | grep -v grep | awk '{print $$2}' | head -1); \
-	if [ ! -z "$$PID" ]; then \
-		echo "  Running: yes (PID: $$PID)"; \
-		if dbus-send --session --dest=org.gnome.Shell.Extensions.Speech2TextWhisperCpp --print-reply /org/gnome/Shell/Extensions/Speech2TextWhisperCpp org.gnome.Shell.Extensions.Speech2TextWhisperCpp.GetServiceStatus >/dev/null 2>&1; then \
-			echo "  D-Bus responding: yes"; \
-		else \
-			echo "  D-Bus responding: no"; \
-		fi; \
-	else \
-		echo "  Running: no"; \
-	fi
+	@cd service-whispercpp && $(MAKE) status
 
 # Verify schema installation
 verify-schema:
-	@echo "Verifying schema installation..."
+	@echo "$(CYAN)Verifying schema installation...$(NC)"
 	@if [ -f "$(SCHEMAS_DIR)/$(SCHEMA_ID).gschema.xml" ]; then \
-		echo "Schema file: found"; \
+		echo "$(GREEN)✅ Schema file found$(NC)"; \
 	else \
-		echo "Schema file: missing"; \
-		echo "Available schemas:"; \
-		ls -la $(SCHEMAS_DIR)/*.gschema.xml 2>/dev/null || echo "No schema files found"; \
+		echo "$(RED)❌ Schema file missing$(NC)"; \
+		echo "$(BLUE)ℹ️  Available schemas:$(NC)"; \
+		ls -la $(SCHEMAS_DIR)/*.gschema.xml 2>/dev/null || echo "$(YELLOW)⚠️  No schema files found$(NC)"; \
 	fi
 	@if [ -f "$(SCHEMAS_DIR)/gschemas.compiled" ]; then \
-		echo "Compiled: yes"; \
+		echo "$(GREEN)✅ Schemas compiled$(NC)"; \
 	else \
-		echo "Compiled: no"; \
+		echo "$(RED)❌ Schemas not compiled$(NC)"; \
 	fi
 
 # Clean build artifacts
 clean:
-	@echo "Cleaning build artifacts..."
+	@echo "$(CYAN)Cleaning build artifacts...$(NC)"
 	@if [ -d "dist" ]; then \
 		rm -rf dist; \
-		echo "Removed dist/"; \
+		echo "$(GREEN)✅ Removed dist/$(NC)"; \
 	fi
-	@if [ -d "service-whispercpp/build" ]; then \
-		rm -rf service-whispercpp/build; \
-		echo "Removed service-whispercpp/build/"; \
-	fi
-	@if [ -d "service-whispercpp/.mypy_cache" ]; then \
-		rm -rf service-whispercpp/.mypy_cache; \
-		echo "Removed .mypy_cache/"; \
-	fi
-	@if [ -d "service-whispercpp/.ruff_cache" ]; then \
-		rm -rf service-whispercpp/.ruff_cache; \
-		echo "Removed .ruff_cache/"; \
-	fi
-	@find service-whispercpp -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null && echo "Removed __pycache__/" || true
-	@find service-whispercpp -type f -name "*.pyc" -delete 2>/dev/null || true
-	@echo "Build artifacts cleaned"
+	@cd service-whispercpp && $(MAKE) clean
+	@echo "$(GREEN)✅ Build artifacts cleaned$(NC)"
