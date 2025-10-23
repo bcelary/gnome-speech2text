@@ -243,7 +243,11 @@ def stop_running_service() -> list[str]:
 
         if result.returncode == 0 and result.stdout.strip():
             pids = result.stdout.strip().split("\n")
+            current_pid = str(sys.getpid())
             for pid in pids:
+                # Skip our own process to avoid killing the uninstall script
+                if pid == current_pid:
+                    continue
                 try:
                     subprocess.run(["kill", pid], check=True)
                     print(f"✅ Stopped process {pid}")

@@ -50,7 +50,7 @@ make install  # Installs both service and extension
 
 Restart GNOME Shell (X11: `Alt+F2` → `r`, Wayland: log out/in)
 
-### Service Only (Extension from GNOME Extensions)
+### Service Only (Extension from GNOME Extensions - FUTURE)
 
 If you installed the extension from extensions.gnome.org:
 
