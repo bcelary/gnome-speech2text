@@ -117,8 +117,8 @@ install: install-service copy-files compile-schemas
 	@echo ""
 	@echo "$(GREEN)✅ Complete installation finished (service + extension)$(NC)"
 
-# Convenience: Complete uninstall (extension + service + settings)
-uninstall: remove-extension remove-service reset-settings
+# Convenience: Complete uninstall (extension + service)
+uninstall: remove-extension remove-service
 	@echo ""
 	@echo "$(GREEN)✅ Complete uninstall finished$(NC)"
 
@@ -128,7 +128,7 @@ install-extension: copy-files compile-schemas
 	@echo "$(GREEN)✅ Extension installation finished$(NC)"
 
 # Convenience: Uninstall extension only
-uninstall-extension: remove-extension reset-settings
+uninstall-extension: remove-extension
 	@echo ""
 	@echo "$(GREEN)✅ Extension uninstall finished$(NC)"
 
