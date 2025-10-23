@@ -354,10 +354,12 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             if state == RecordingState.RECORDING:
                 self.RecordingStarted(recording_id)
 
+            elif state == RecordingState.RECORDED:
+                self.RecordingStopped(recording_id, "recorded")
+
             elif state == RecordingState.COMPLETED:
                 text = data.get("text", "")
                 self.TranscriptionReady(recording_id, text)
-                self.RecordingStopped(recording_id, "completed")
 
             elif state == RecordingState.CANCELLED:
                 self.RecordingStopped(recording_id, "cancelled")
