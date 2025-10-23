@@ -40,6 +40,7 @@ class RecordingManager:
         state_change_callback: Optional[
             Callable[[str, RecordingState, Dict[str, Any]], None]
         ] = None,
+        signal_emitter: Optional[Callable[[str, str, bool], None]] = None,
     ):
         """Initialize recording manager.
 
@@ -49,12 +50,14 @@ class RecordingManager:
             dependency_checker: Dependency checker instance
             post_processor: PostProcessor instance
             state_change_callback: Callback for recording state changes
+            signal_emitter: Optional callback for emitting D-Bus signals (signal_name, text, success)
         """
         self.service_config = service_config
         self.whisper_client = whisper_client
         self.dependency_checker = dependency_checker
         self.post_processor = post_processor
         self.state_change_callback = state_change_callback
+        self.signal_emitter = signal_emitter
 
         # Single current recording
         self._current_recording: Optional[Recording] = None
@@ -265,12 +268,13 @@ class RecordingManager:
             client=self.whisper_client, server_url=self.service_config.server_url
         )
 
-        # Create recording with callback
+        # Create recording with callback and signal emitter
         return Recording(
             config=config,
             transcriber=transcriber,
             post_processor=self.post_processor,
             callback=self._on_recording_state_change,
+            signal_emitter=self.signal_emitter,
         )
 
     def _recording_worker(self, recording: Recording) -> None:

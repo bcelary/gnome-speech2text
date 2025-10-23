@@ -60,5 +60,10 @@
       <arg type="s" name="text" />
       <arg type="b" name="success" />
     </signal>
+
+    <signal name="TextCopied">
+      <arg type="s" name="text" />
+      <arg type="b" name="success" />
+    </signal>
   </interface>
 </node> 

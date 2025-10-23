@@ -189,6 +189,8 @@ export class RecordingStateManager {
       if (result.action === "empty") {
         Main.notify("Speech2Text", "No speech detected");
       }
+      // Note: Notifications for copy_only, type_only, and type_and_copy are now
+      // handled by TextCopied and TextTyped signals in dbusManager.js
     }
     // else: Preview mode - dialog stays open for user interaction
 

@@ -76,6 +76,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             dependency_checker=self.dependency_checker,
             post_processor=self.post_processor,
             state_change_callback=self._on_recording_state_change,
+            signal_emitter=self._emit_signal,
         )
 
         # Initialize syslog
@@ -340,6 +341,11 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
         """Signal emitted when text is typed."""
         pass
 
+    @dbus.service.signal(DBUS_NAME, signature="sb")  # type: ignore
+    def TextCopied(self, text: str, success: bool) -> None:  # noqa: N802
+        """Signal emitted when text is copied to clipboard."""
+        pass
+
     def _on_recording_state_change(
         self, recording_id: str, state: RecordingState, data: Dict[str, Any]
     ) -> None:
@@ -372,6 +378,28 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
         except Exception as e:
             syslog.syslog(
                 syslog.LOG_ERR, f"Error emitting D-Bus signal for state {state}: {e}"
+            )
+
+    def _emit_signal(self, signal_name: str, text: str, success: bool) -> None:
+        """Emit a D-Bus signal for post-processing actions.
+
+        Args:
+            signal_name: Name of the signal to emit ("TextTyped" or "TextCopied")
+            text: The text that was processed
+            success: Whether the operation succeeded
+        """
+        try:
+            if signal_name == "TextTyped":
+                self.TextTyped(text, success)
+            elif signal_name == "TextCopied":
+                self.TextCopied(text, success)
+            else:
+                syslog.syslog(
+                    syslog.LOG_WARNING, f"Unknown signal name: {signal_name}"
+                )
+        except Exception as e:
+            syslog.syslog(
+                syslog.LOG_ERR, f"Error emitting {signal_name} signal: {e}"
             )
 
 

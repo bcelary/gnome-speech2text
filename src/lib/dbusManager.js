@@ -54,6 +54,10 @@ const Speech2TextInterface = `
       <arg type="s" name="text" />
       <arg type="b" name="success" />
     </signal>
+    <signal name="TextCopied">
+      <arg type="s" name="text" />
+      <arg type="b" name="success" />
+    </signal>
   </interface>
 </node>`;
 
@@ -168,6 +172,20 @@ export class DBusManager {
             Main.notify("Speech2Text Error", "Failed to insert text.");
           }
           handlers.onTextTyped?.(text, success);
+        }
+      )
+    );
+
+    this.signalConnections.push(
+      this.dbusProxy.connectSignal(
+        "TextCopied",
+        (proxy, sender, [text, success]) => {
+          if (success) {
+            Main.notify("Speech2Text", "Text copied to clipboard!");
+          } else {
+            Main.notify("Speech2Text Error", "Failed to copy to clipboard.");
+          }
+          handlers.onTextCopied?.(text, success);
         }
       )
     );

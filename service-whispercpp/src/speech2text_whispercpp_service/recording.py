@@ -37,6 +37,7 @@ class Recording:
         callback: Optional[
             Callable[[str, RecordingState, Dict[str, Any]], None]
         ] = None,
+        signal_emitter: Optional[Callable[[str, str, bool], None]] = None,
     ):
         """Initialize recording state machine.
 
@@ -45,11 +46,13 @@ class Recording:
             transcriber: Transcriber instance for audio-to-text
             post_processor: PostProcessor for clipboard/typing
             callback: Optional callback for state changes (recording_id, state, data)
+            signal_emitter: Optional callback for emitting D-Bus signals (signal_name, text, success)
         """
         self.config = config
         self.transcriber = transcriber
         self.post_processor = post_processor
         self.callback = callback
+        self.signal_emitter = signal_emitter
 
         # State management
         self._state = RecordingState.STARTING
@@ -302,6 +305,17 @@ class Recording:
             )
             return
         success = self.post_processor.copy_to_clipboard(self._transcribed_text)
+
+        # Emit TextCopied signal if signal emitter is available
+        if self.signal_emitter:
+            try:
+                self.signal_emitter("TextCopied", self._transcribed_text, success)
+            except Exception as e:
+                syslog.syslog(
+                    syslog.LOG_ERR,
+                    f"Error emitting TextCopied signal: {e}",
+                )
+
         if not success:
             syslog.syslog(
                 syslog.LOG_WARNING,
@@ -317,6 +331,17 @@ class Recording:
             )
             return
         success = self.post_processor.type_text(self._transcribed_text)
+
+        # Emit TextTyped signal if signal emitter is available
+        if self.signal_emitter:
+            try:
+                self.signal_emitter("TextTyped", self._transcribed_text, success)
+            except Exception as e:
+                syslog.syslog(
+                    syslog.LOG_ERR,
+                    f"Error emitting TextTyped signal: {e}",
+                )
+
         # Note: We don't fail the recording if typing fails, just log it
         if not success:
             syslog.syslog(
