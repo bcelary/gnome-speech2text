@@ -67,7 +67,8 @@ export class RecordingController {
         // Create and show recording dialog
         const recordingDialog = new RecordingDialog(
           () => {
-            // Cancel callback
+            // Cancel callback - used for Cancel button, Escape key, and Copy button in preview
+            logger.debug("Cancel callback - closing dialog");
             this.recordingStateManager.cancelRecording();
             this.recordingStateManager.setRecordingDialog(null);
           },
@@ -172,6 +173,7 @@ export class RecordingController {
     const previewDialog = new RecordingDialog(
       () => {
         // Cancel callback - just close
+        logger.debug("Cancel callback in standalone preview dialog");
         previewDialog.close();
       },
       (finalText) => {

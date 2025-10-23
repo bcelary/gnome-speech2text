@@ -630,6 +630,98 @@ export class RecordingDialog {
     this._buildErrorUI(message);
   }
 
+  /**
+   * Handler for recording_completed signal from D-Bus service
+   * Called when recording finishes (either auto-timeout or manual stop)
+   */
+  onRecordingCompleted() {
+    logger.debug(
+      `Dialog.onRecordingCompleted() - current phase: ${this.currentPhase}`
+    );
+
+    // Only transition if we're still in recording phase
+    // If already in processing/preview, transcription came first (race condition)
+    if (this.currentPhase === DialogPhase.RECORDING) {
+      this.showProcessing();
+    } else {
+      logger.debug(
+        `Already in ${this.currentPhase} phase - ignoring recording_completed`
+      );
+    }
+  }
+
+  /**
+   * Handler for transcription_ready signal from D-Bus service
+   * Called when transcription is complete
+   * @returns {object} - { shouldClose: boolean, action: string }
+   */
+  onTranscriptionReady(text, settings) {
+    logger.debug(
+      `Dialog.onTranscriptionReady() - current phase: ${this.currentPhase}, text: "${text}"`
+    );
+
+    // Only handle if in processing phase
+    // Ignore if still recording (race) or already in preview/error
+    if (this.currentPhase !== DialogPhase.PROCESSING) {
+      logger.debug(`Not in processing phase - ignoring transcription`);
+      return { shouldClose: false, action: "ignored" };
+    }
+
+    // Handle empty transcription (no speech detected - not an error, just informational)
+    if (!text || text.trim().length === 0) {
+      logger.debug("Empty transcription - closing and notifying");
+      return { shouldClose: true, action: "empty" };
+    }
+
+    // Determine if we should show preview based on settings
+    const postRecordingAction = settings.get_string("post-recording-action");
+    const isWayland = Meta.is_wayland_compositor();
+
+    logger.debug(
+      `Post-recording action: ${postRecordingAction}, isWayland: ${isWayland}`
+    );
+
+    const shouldShowPreview =
+      postRecordingAction === "preview" ||
+      (isWayland &&
+        (postRecordingAction === "type_only" ||
+          postRecordingAction === "type_and_copy"));
+
+    if (shouldShowPreview) {
+      // PREVIEW MODE: Show dialog with editable text
+      logger.debug("Showing preview mode");
+      this.showPreview(text);
+      return { shouldClose: false, action: "preview" };
+    } else {
+      // AUTO-ACTION MODE: Service handled everything, close dialog
+      logger.debug(
+        `Auto-action mode (${postRecordingAction}) - service handled insertion`
+      );
+      return { shouldClose: true, action: "service_handled", text };
+    }
+  }
+
+  /**
+   * Handler for recording_error signal from D-Bus service
+   * Can be called during recording or processing phase
+   * @returns {object} - { shouldClose: boolean }
+   */
+  onError(message) {
+    logger.debug(
+      `Dialog.onError() - current phase: ${this.currentPhase}, message: "${message}"`
+    );
+
+    // Can handle errors from any active phase
+    if (this.currentPhase === DialogPhase.ERROR) {
+      logger.debug("Already showing error - ignoring duplicate");
+      return { shouldClose: false };
+    }
+
+    // Show error in dialog and keep it open - user will close via Close button
+    this.showError(message);
+    return { shouldClose: false };
+  }
+
   open() {
     console.log("Opening DBus recording dialog");
 
