@@ -1,3 +1,19 @@
+/**
+ * Naming constants - Single source of truth for extension naming
+ *
+ * When renaming the extension, update these constants and metadata.json
+ */
+
+// Extension identification
+export const EXTENSION_UUID = 'speech2text-whispercpp@bcelary.github';
+
+// GSettings schema
+export const SCHEMA_ID = 'org.gnome.shell.extensions.speech2text-whispercpp';
+
+// D-Bus service identification (must match service-side constants!)
+export const DBUS_NAME = 'org.gnome.Shell.Extensions.Speech2TextWhisperCpp';
+export const DBUS_PATH = '/org/gnome/Shell/Extensions/Speech2TextWhisperCpp';
+
 // Constants for consistent styling and colors
 export const COLORS = {
   PRIMARY: "#ff8c00",

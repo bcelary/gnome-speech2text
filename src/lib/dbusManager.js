@@ -2,13 +2,14 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { Logger } from "./logger.js";
+import { DBUS_NAME, DBUS_PATH } from "./constants.js";
 
 const logger = new Logger("DBus");
 
 // D-Bus interface XML for the speech2text service
 const Speech2TextInterface = `
 <node>
-  <interface name="org.gnome.Shell.Extensions.Speech2TextWhisperCpp">
+  <interface name="${DBUS_NAME}">
     <method name="StartRecording">
       <arg direction="in" type="i" name="duration" />
       <arg direction="in" type="s" name="post_recording_action" />
@@ -81,8 +82,8 @@ export class DBusManager {
 
       this.dbusProxy = new Speech2TextProxy(
         Gio.DBus.session,
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
-        "/org/gnome/Shell/Extensions/Speech2TextWhisperCpp"
+        DBUS_NAME,
+        DBUS_PATH
       );
 
       // Test if the service is actually reachable

@@ -19,11 +19,13 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from . import DBUS_NAME, DBUS_SERVICE_FILE, PACKAGE_NAME, SERVICE_EXECUTABLE
+
 
 def get_service_executable_path() -> Optional[str]:
     """Find the installed service executable path."""
     # Try to find the executable in PATH
-    executable = shutil.which("gnome-speech2text-service-whispercpp")
+    executable = shutil.which(SERVICE_EXECUTABLE)
     if executable:
         return str(Path(executable).resolve())
 
@@ -31,13 +33,13 @@ def get_service_executable_path() -> Optional[str]:
     # Look in the same bin directory as the Python interpreter
     python_bin = Path(sys.executable)
     if python_bin.parent.name == "bin":
-        service_bin = python_bin.parent / "gnome-speech2text-service-whispercpp"
+        service_bin = python_bin.parent / SERVICE_EXECUTABLE
         if service_bin.exists():
             return str(service_bin)
 
     # Fallback: check common pipx installation location
     home = Path.home()
-    pipx_bin = home / ".local" / "bin" / "gnome-speech2text-service-whispercpp"
+    pipx_bin = home / ".local" / "bin" / SERVICE_EXECUTABLE
     if pipx_bin.exists():
         return str(pipx_bin)
 
@@ -48,7 +50,7 @@ def setup_dbus_service() -> bool:
     """Register D-Bus service file."""
     executable_path = get_service_executable_path()
     if not executable_path:
-        print("❌ Error: Could not find gnome-speech2text-whispercpp executable")
+        print(f"❌ Error: Could not find {SERVICE_EXECUTABLE} executable")
         print("   Make sure the service is installed via pipx")
         return False
 
@@ -57,13 +59,11 @@ def setup_dbus_service() -> bool:
     dbus_service_dir.mkdir(parents=True, exist_ok=True)
 
     # D-Bus service file path
-    service_file = (
-        dbus_service_dir / "org.gnome.Shell.Extensions.Speech2TextWhisperCpp.service"
-    )
+    service_file = dbus_service_dir / DBUS_SERVICE_FILE
 
     # D-Bus service file content
     service_content = f"""[D-BUS Service]
-Name=org.gnome.Shell.Extensions.Speech2TextWhisperCpp
+Name={DBUS_NAME}
 Exec={executable_path}
 """
 
@@ -88,7 +88,7 @@ def setup_desktop_entry() -> bool:
     desktop_dir.mkdir(parents=True, exist_ok=True)
 
     # Desktop file path
-    desktop_file = desktop_dir / "gnome-speech2text-service-whispercpp.desktop"
+    desktop_file = desktop_dir / f"{SERVICE_EXECUTABLE}.desktop"
 
     # Desktop entry content
     desktop_content = f"""[Desktop Entry]
@@ -152,7 +152,7 @@ def main() -> int:
     if not executable_path:
         print("❌ Error: Service executable not found")
         print("\nPlease install the service first:")
-        print("  pipx install gnome-speech2text-service-whispercpp")
+        print(f"  pipx install {PACKAGE_NAME}")
         return 1
 
     print(f"📦 Service executable: {executable_path}")
@@ -184,11 +184,9 @@ def main() -> int:
     print(f"  {executable_path}")
     print()
     print("To verify D-Bus registration:")
-    print(
-        "  dbus-send --session --dest=org.gnome.Shell.Extensions.Speech2TextWhisperCpp \\"
-    )
-    print("    --print-reply /org/gnome/Shell/Extensions/Speech2TextWhisperCpp \\")
-    print("    org.gnome.Shell.Extensions.Speech2TextWhisperCpp.GetServiceStatus")
+    print(f"  dbus-send --session --dest={DBUS_NAME} \\")
+    print(f"    --print-reply {DBUS_PATH} \\")
+    print(f"    {DBUS_NAME}.GetServiceStatus")
 
     return 0
 
@@ -196,12 +194,7 @@ def main() -> int:
 def remove_dbus_service() -> bool:
     """Remove D-Bus service file."""
     dbus_service_file = (
-        Path.home()
-        / ".local"
-        / "share"
-        / "dbus-1"
-        / "services"
-        / "org.gnome.Shell.Extensions.Speech2TextWhisperCpp.service"
+        Path.home() / ".local" / "share" / "dbus-1" / "services" / DBUS_SERVICE_FILE
     )
 
     if dbus_service_file.exists():
@@ -220,11 +213,7 @@ def remove_dbus_service() -> bool:
 def remove_desktop_entry() -> bool:
     """Remove desktop entry."""
     desktop_file = (
-        Path.home()
-        / ".local"
-        / "share"
-        / "applications"
-        / "gnome-speech2text-service-whispercpp.desktop"
+        Path.home() / ".local" / "share" / "applications" / f"{SERVICE_EXECUTABLE}.desktop"
     )
 
     if desktop_file.exists():

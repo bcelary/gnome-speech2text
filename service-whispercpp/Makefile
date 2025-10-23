@@ -1,10 +1,10 @@
 # GNOME Speech2Text Service (WhisperCpp) - Makefile
 # Handles service installation, development setup, and management
 
-PACKAGE_NAME = gnome-speech2text-service-whispercpp
-SERVICE_NAME = gnome-speech2text-service-whispercpp
-SETUP_CMD = gnome-speech2text-whispercpp-setup
-UNINSTALL_CMD = gnome-speech2text-whispercpp-uninstall
+PACKAGE_NAME = speech2text-whispercpp-service
+SERVICE_NAME = speech2text-whispercpp-service
+SETUP_CMD = speech2text-whispercpp-setup
+UNINSTALL_CMD = speech2text-whispercpp-uninstall
 DBUS_SERVICE_FILE = $(HOME)/.local/share/dbus-1/services/org.gnome.Shell.Extensions.Speech2TextWhisperCpp.service
 GITHUB_URL = git+https://github.com/bcelary/gnome-speech2text.git\#subdirectory=service-whispercpp
 

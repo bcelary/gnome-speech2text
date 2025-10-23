@@ -17,6 +17,7 @@ import dbus.mainloop.glib
 import dbus.service
 from gi.repository import GLib
 
+from . import DBUS_NAME, DBUS_PATH
 from .dependency_checker import DependencyChecker
 from .post_processor import PostProcessor
 from .recording_manager import RecordingManager
@@ -46,10 +47,8 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
         # Set up D-Bus
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         bus = dbus.SessionBus()
-        bus_name = dbus.service.BusName(
-            "org.gnome.Shell.Extensions.Speech2TextWhisperCpp", bus
-        )
-        super().__init__(bus_name, "/org/gnome/Shell/Extensions/Speech2TextWhisperCpp")
+        bus_name = dbus.service.BusName(DBUS_NAME, bus)
+        super().__init__(bus_name, DBUS_PATH)
 
         # Parse service configuration from environment
         self.service_config = self._load_service_config()

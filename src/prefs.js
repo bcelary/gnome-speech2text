@@ -2,10 +2,11 @@ import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 import Gio from 'gi://Gio';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import { SCHEMA_ID } from './lib/constants.js';
 
 export default class Speech2TextPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
-        const settings = this.getSettings('org.gnome.shell.extensions.speech2text-whispercpp');
+        const settings = this.getSettings(SCHEMA_ID);
 
         // Create a preferences page
         const page = new Adw.PreferencesPage({

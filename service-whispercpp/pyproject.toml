@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gnome-speech2text-service-whispercpp"
+name = "speech2text-whispercpp-service"  # Keep in sync with __init__.py:PACKAGE_NAME
 version = "0.9"
 description = "whisper.cpp-based D-Bus service providing speech-to-text functionality for GNOME Shell"
 readme = "README.md"
@@ -52,9 +52,10 @@ Issues = "https://github.com/bcelary/gnome-speech2text/issues"
 Documentation = "https://github.com/bcelary/gnome-speech2text/blob/main/README.md"
 
 [project.scripts]
-gnome-speech2text-service-whispercpp = "gnome_speech2text_service_whispercpp.cli:main"
-gnome-speech2text-whispercpp-setup = "gnome_speech2text_service_whispercpp.setup:main"
-gnome-speech2text-whispercpp-uninstall = "gnome_speech2text_service_whispercpp.setup:uninstall"
+# Keep in sync with __init__.py constants
+speech2text-whispercpp-service = "gnome_speech2text_service_whispercpp.cli:main"
+speech2text-whispercpp-setup = "gnome_speech2text_service_whispercpp.setup:main"
+speech2text-whispercpp-uninstall = "gnome_speech2text_service_whispercpp.setup:uninstall"
 
 [tool.setuptools.packages.find]
 where = ["src"]

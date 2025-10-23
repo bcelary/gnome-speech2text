@@ -4,6 +4,7 @@ import { RecordingController } from "./lib/recordingController.js";
 import { ServiceManager } from "./lib/serviceManager.js";
 import { KeybindingManager } from "./lib/keybindingManager.js";
 import { Logger } from "./lib/logger.js";
+import { SCHEMA_ID } from "./lib/constants.js";
 
 const logger = new Logger("Extension");
 let extensionInstance = null;
@@ -21,7 +22,7 @@ export default class Speech2TextExtension extends Extension {
 
   async enable() {
     logger.info("Enabling Speech2Text extension (D-Bus version)");
-    this.settings = this.getSettings("org.gnome.shell.extensions.speech2text-whispercpp");
+    this.settings = this.getSettings(SCHEMA_ID);
 
     this.serviceManager = new ServiceManager();
     await this.serviceManager.initialize();
@@ -102,9 +103,7 @@ export default class Speech2TextExtension extends Extension {
       logger.info("Attempting full extension state recovery");
 
       if (!this.settings) {
-        this.settings = this.getSettings(
-          "org.gnome.shell.extensions.speech2text-whispercpp"
-        );
+        this.settings = this.getSettings(SCHEMA_ID);
       }
 
       if (!this.uiManager) {

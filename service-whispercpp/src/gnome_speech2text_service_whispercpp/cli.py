@@ -9,7 +9,7 @@ This is the entry point that gets called when users run
 import argparse
 import sys
 
-from . import __version__
+from . import SERVICE_EXECUTABLE, __version__
 from .service import main as service_main
 
 
@@ -18,10 +18,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="GNOME Speech2Text D-Bus Service - whisper.cpp Backend",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
 Examples:
-  gnome-speech2text-service-whispercpp          # Start the D-Bus service
-  gnome-speech2text-service-whispercpp --help   # Show this help message
+  {SERVICE_EXECUTABLE}          # Start the D-Bus service
+  {SERVICE_EXECUTABLE} --help   # Show this help message
 
 This service provides speech-to-text functionality via D-Bus for the
 GNOME Shell Speech2Text extension, using a local whisper.cpp server.

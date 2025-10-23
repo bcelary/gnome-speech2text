@@ -1,7 +1,7 @@
 # GNOME Speech2Text Extension - Makefile
 # Automates common installation tasks
 
-EXTENSION_UUID = gnome-speech2text-whispercpp@bcelary.github
+EXTENSION_UUID = speech2text-whispercpp@bcelary.github
 EXTENSION_DIR = $(HOME)/.local/share/gnome-shell/extensions/$(EXTENSION_UUID)
 SOURCE_DIR = src
 SCHEMAS_DIR = $(EXTENSION_DIR)/schemas
