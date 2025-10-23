@@ -68,28 +68,15 @@ help:
 
 install: check-system-deps check-pipx pipx-install-github setup-dbus check-whisper
 	@echo ""
-	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
-	@echo "$(GREEN)✅ Installation completed successfully!$(NC)"
-	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Next steps:$(NC)"
-	@echo "  1. Install the GNOME Shell extension (if not already installed)"
-	@echo "  2. The service will start automatically when needed"
-	@echo "  3. To manually test: $(SERVICE_NAME)"
-	@echo ""
-	@echo "$(YELLOW)To uninstall:$(NC)"
-	@echo "  make uninstall"
+	@echo "$(GREEN)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)✅ Service installation completed successfully!$(NC)"
+	@echo "$(GREEN)════════════════════════════════════════════════════════════════$(NC)"
 
 install-local: check-system-deps check-pipx pipx-install-local setup-dbus check-whisper
 	@echo ""
-	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
-	@echo "$(GREEN)✅ Local installation completed successfully!$(NC)"
-	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Installed from local source directory$(NC)"
-	@echo ""
-	@echo "$(YELLOW)To uninstall:$(NC)"
-	@echo "  make uninstall"
+	@echo "$(GREEN)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)✅ Service installation completed successfully! (local)$(NC)"
+	@echo "$(GREEN)════════════════════════════════════════════════════════════════$(NC)"
 
 upgrade: check-pipx pipx-upgrade setup-dbus
 	@echo ""
@@ -112,7 +99,7 @@ dev: check-system-deps dev-setup dev-register
 	@echo "  make format     - Format code"
 	@echo "  make lint       - Lint and fix code"
 
-uninstall: uninstall-pipx uninstall-dbus clean
+uninstall: uninstall-dbus uninstall-pipx clean
 	@echo ""
 	@echo "$(GREEN)✅ Service uninstalled successfully$(NC)"
 
@@ -147,10 +134,6 @@ check-system-deps:
 		exit 1; \
 	fi
 	@echo "$(GREEN)✅ All required system packages are installed$(NC)"
-	@SESSION_TYPE="$${XDG_SESSION_TYPE:-}"; \
-	if [ "$$SESSION_TYPE" != "wayland" ] && ! command -v xdotool >/dev/null 2>&1; then \
-		echo "$(YELLOW)⚠️  Optional: xdotool not found (needed for text insertion on X11)$(NC)"; \
-	fi
 
 check-pipx:
 	@if ! command -v pipx >/dev/null 2>&1; then \
@@ -166,9 +149,9 @@ pipx-install-github:
 	@echo "$(CYAN)Installing service from GitHub via pipx...$(NC)"
 	@if pipx list 2>/dev/null | grep -q "$(PACKAGE_NAME)"; then \
 		echo "$(YELLOW)⚠️  Service already installed, upgrading...$(NC)"; \
-		pipx upgrade $(PACKAGE_NAME) || exit 1; \
+		pipx upgrade --quiet $(PACKAGE_NAME) || exit 1; \
 	else \
-		pipx install --system-site-packages "$(GITHUB_URL)" || exit 1; \
+		pipx install --quiet --system-site-packages "$(GITHUB_URL)" || exit 1; \
 	fi
 	@echo "$(GREEN)✅ Service installed from GitHub$(NC)"
 
@@ -182,9 +165,9 @@ pipx-install-local:
 	@SCRIPT_DIR="$$(pwd)"; \
 	if pipx list 2>/dev/null | grep -q "$(PACKAGE_NAME)"; then \
 		echo "$(YELLOW)⚠️  Service already installed, using --force to reinstall...$(NC)"; \
-		pipx install --force --system-site-packages "$$SCRIPT_DIR" || exit 1; \
+		pipx install --quiet --force --system-site-packages "$$SCRIPT_DIR" || exit 1; \
 	else \
-		pipx install --system-site-packages "$$SCRIPT_DIR" || exit 1; \
+		pipx install --quiet --system-site-packages "$$SCRIPT_DIR" || exit 1; \
 	fi
 	@echo "$(GREEN)✅ Service installed from local source$(NC)"
 
@@ -195,7 +178,7 @@ pipx-upgrade:
 		echo "Install it first: make install"; \
 		exit 1; \
 	fi
-	@pipx upgrade $(PACKAGE_NAME) || exit 1
+	@pipx upgrade --quiet $(PACKAGE_NAME) || exit 1
 	@echo "$(GREEN)✅ Service upgraded$(NC)"
 
 setup-dbus:
@@ -211,29 +194,26 @@ setup-dbus:
 	@echo "$(GREEN)✅ D-Bus integration configured$(NC)"
 
 check-whisper:
-	@echo "$(CYAN)Checking whisper.cpp setup...$(NC)"
+	@echo "$(CYAN)Checking whisper.cpp...$(NC)"
 	@if command -v whisper-server >/dev/null 2>&1; then \
 		if whisper-server -h >/dev/null 2>&1; then \
-			echo "$(GREEN)✅ whisper-server found and working$(NC)"; \
-			WHISPER_PATH=$$(which whisper-server); \
-			echo "$(BLUE)ℹ️  Path: $$WHISPER_PATH$(NC)"; \
+			echo "$(GREEN)✅ whisper-server found$(NC)"; \
 		else \
 			echo "$(RED)❌ whisper-server found but not working$(NC)"; \
-			WHISPER_PATH=$$(which whisper-server); \
-			echo "$(BLUE)ℹ️  Path: $$WHISPER_PATH$(NC)"; \
-			echo "$(YELLOW)⚠️  The binary may be corrupted or incompatible$(NC)"; \
 		fi; \
 	else \
 		echo "$(YELLOW)⚠️  whisper-server not found in PATH$(NC)"; \
-		echo ""; \
-		echo "To use this service, build whisper.cpp:"; \
-		echo "  git clone https://github.com/ggerganov/whisper.cpp"; \
-		echo "  cd whisper.cpp"; \
-		echo "  make server"; \
-		echo "  sudo make install"; \
-		echo "  bash ./models/download-ggml-model.sh base ~/.cache/whisper.cpp"; \
-		echo ""; \
-		echo "The service will auto-start whisper-server when needed."; \
+	fi
+	@CACHE_DIR="$$HOME/.cache/whisper.cpp"; \
+	if [ -d "$$CACHE_DIR" ]; then \
+		MODEL_COUNT=$$(find "$$CACHE_DIR" -name "ggml-*.bin" -type f 2>/dev/null | wc -l); \
+		if [ $$MODEL_COUNT -gt 0 ]; then \
+			echo "$(GREEN)✅ $$MODEL_COUNT model(s) cached$(NC)"; \
+		else \
+			echo "$(YELLOW)⚠️  No models found$(NC)"; \
+		fi; \
+	else \
+		echo "$(YELLOW)⚠️  No model cache$(NC)"; \
 	fi
 
 dev-setup:
@@ -259,34 +239,33 @@ dev-register:
 	@.venv/bin/$(SETUP_CMD) || exit 1
 	@echo "$(GREEN)✅ Development installation registered$(NC)"
 
-uninstall-pipx:
-	@echo "$(CYAN)Removing pipx package...$(NC)"
-	@if command -v $(UNINSTALL_CMD) >/dev/null 2>&1; then \
-		echo "" | $(UNINSTALL_CMD) 2>/dev/null || true; \
-	fi
-	@if command -v pipx >/dev/null 2>&1 && pipx list 2>/dev/null | grep -q "$(PACKAGE_NAME)"; then \
-		pipx uninstall $(PACKAGE_NAME) || true; \
-		echo "$(GREEN)✅ pipx package removed$(NC)"; \
-	else \
-		echo "$(BLUE)ℹ️  pipx package not found (not installed or already removed)$(NC)"; \
-	fi
-
 uninstall-dbus:
 	@echo "$(CYAN)Removing D-Bus registration...$(NC)"
-	@PID=$$(ps aux | grep -E "$(SERVICE_NAME)" | grep -v grep | awk '{print $$2}' | head -1); \
-	if [ -n "$$PID" ]; then \
-		echo "$(BLUE)ℹ️  Stopping service process $$PID...$(NC)"; \
-		kill $$PID 2>/dev/null || true; \
-		sleep 1; \
-	fi
-	@if [ -f "$(DBUS_SERVICE_FILE)" ]; then \
-		rm -f "$(DBUS_SERVICE_FILE)" && echo "$(GREEN)✅ D-Bus service file removed$(NC)"; \
+	@if command -v $(UNINSTALL_CMD) >/dev/null 2>&1; then \
+		$(UNINSTALL_CMD) 2>/dev/null || true; \
 	else \
-		echo "$(BLUE)ℹ️  D-Bus service file not found$(NC)"; \
+		PID=$$(ps aux | grep -E "$(SERVICE_NAME)" | grep -v grep | awk '{print $$2}' | head -1); \
+		if [ -n "$$PID" ]; then \
+			kill $$PID 2>/dev/null || true; \
+			sleep 1; \
+		fi; \
+		if [ -f "$(DBUS_SERVICE_FILE)" ]; then \
+			rm -f "$(DBUS_SERVICE_FILE)"; \
+		fi; \
+		DESKTOP_FILE="$$HOME/.local/share/applications/$(SERVICE_NAME).desktop"; \
+		if [ -f "$$DESKTOP_FILE" ]; then \
+			rm -f "$$DESKTOP_FILE"; \
+		fi; \
 	fi
-	@DESKTOP_FILE="$$HOME/.local/share/applications/$(SERVICE_NAME).desktop"; \
-	if [ -f "$$DESKTOP_FILE" ]; then \
-		rm -f "$$DESKTOP_FILE" && echo "$(GREEN)✅ Desktop entry removed$(NC)"; \
+	@echo "$(GREEN)✅ D-Bus integration removed$(NC)"
+
+uninstall-pipx:
+	@echo "$(CYAN)Removing pipx package...$(NC)"
+	@if command -v pipx >/dev/null 2>&1 && pipx list 2>/dev/null | grep -q "$(PACKAGE_NAME)"; then \
+		pipx uninstall $(PACKAGE_NAME) 2>&1 | grep -v "^  " || true; \
+		echo "$(GREEN)✅ pipx package removed$(NC)"; \
+	else \
+		echo "$(BLUE)ℹ️  pipx package not found$(NC)"; \
 	fi
 
 kill-service:

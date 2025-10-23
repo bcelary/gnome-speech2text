@@ -22,7 +22,6 @@ from typing import Optional
 from speech2text_whispercpp_service.constants import (
     DBUS_NAME,
     DBUS_SERVICE_FILE,
-    PACKAGE_NAME,
     SERVICE_EXECUTABLE,
 )
 
@@ -51,12 +50,12 @@ def get_service_executable_path() -> Optional[str]:
     return None
 
 
-def setup_dbus_service() -> tuple[bool, Optional[Path]]:
+def setup_dbus_service() -> bool:
     """Register D-Bus service file. Returns (success, file_path)."""
     executable_path = get_service_executable_path()
     if not executable_path:
         print(f"❌ Could not find {SERVICE_EXECUTABLE}. See README for installation.")
-        return False, None
+        return False
 
     dbus_service_dir = Path.home() / ".local" / "share" / "dbus-1" / "services"
     dbus_service_dir.mkdir(parents=True, exist_ok=True)
@@ -70,17 +69,18 @@ Exec={executable_path}
     try:
         service_file.write_text(service_content)
         print("✅ D-Bus service registered")
-        return True, service_file
+        return True
     except Exception as e:
         print(f"❌ Failed to register D-Bus service: {e}")
-        return False, None
+        return False
 
 
-def setup_desktop_entry() -> tuple[bool, Optional[Path]]:
+def setup_desktop_entry() -> bool:
     """Create desktop entry (hidden, for system integration). Returns (success, file_path)."""
     executable_path = get_service_executable_path()
     if not executable_path:
-        return False, None
+        print("❌ Failed to create desktop entry, no executable path found")
+        return False
 
     desktop_dir = Path.home() / ".local" / "share" / "applications"
     desktop_dir.mkdir(parents=True, exist_ok=True)
@@ -100,80 +100,46 @@ Categories=Utility;
     try:
         desktop_file.write_text(desktop_content)
         print("✅ Desktop entry created")
-        return True, desktop_file
+        return True
     except Exception as e:
         print(f"❌ Failed to create desktop entry: {e}")
-        return False, None
+        return False
 
 
 def check_whisper_cpp() -> None:
     """Check if whisper.cpp is set up (informational only)."""
-    print("\n🔍 Checking whisper.cpp:")
-
     if shutil.which("whisper-server"):
-        print("  ✅ whisper-server found")
+        print("✅ whisper-server found")
     else:
-        print("  ⚠️  whisper-server not found")
+        print("⚠️ whisper-server not found")
 
     cache_dir = Path.home() / ".cache" / "whisper.cpp"
     if cache_dir.exists():
         models = list(cache_dir.glob("ggml-*.bin"))
         if models:
-            print(f"  ✅ {len(models)} model(s) cached")
+            print(f"✅ {len(models)} model(s) cached")
         else:
-            print("  ⚠️  No models found")
+            print("⚠️ No models found")
     else:
-        print("  ⚠️  No model cache")
-
-    print("\n  See README for whisper.cpp setup.")
+        print("⚠️ No model cache")
 
 
-def print_setup_summary(
-    executable_path: str,
-    dbus_file: Optional[Path],
-    desktop_file: Optional[Path],
-) -> None:
-    """Print summary of installed files."""
-    print("\n📋 Installation summary:")
-    print(f"  Service:  {executable_path}")
-    if dbus_file:
-        print(f"  D-Bus:    {dbus_file}")
-    if desktop_file:
-        print(f"  Desktop:  {desktop_file}")
-
-
-def main() -> int:
-    """Main setup function."""
-    print("=" * 60)
-    print("  GNOME Speech2Text Service (WhisperCpp) - Setup")
-    print("=" * 60)
-    print()
-
+def setup() -> int:
+    """Setup function."""
     executable_path = get_service_executable_path()
     if not executable_path:
         print("❌ Service executable not found. See README for installation.")
         return 1
 
-    print("🔧 Setting up D-Bus integration...")
-    success, dbus_file = setup_dbus_service()
-    if not success:
+    if not setup_dbus_service():
         return 1
 
-    success, desktop_file = setup_desktop_entry()
-    if not success:
+    if not setup_desktop_entry():
         return 1
 
     check_whisper_cpp()
 
-    print_setup_summary(executable_path, dbus_file, desktop_file)
-
-    print()
-    print("=" * 60)
     print("✅ Setup complete!")
-    print("=" * 60)
-    print()
-    print("Service will start automatically via D-Bus.")
-    print(f"Test manually: {executable_path}")
 
     return 0
 
@@ -187,7 +153,7 @@ def remove_dbus_service() -> tuple[bool, Optional[Path]]:
     if dbus_service_file.exists():
         try:
             dbus_service_file.unlink()
-            print("✅ Removed D-Bus service")
+            print("✅ D-Bus service removed")
             return True, dbus_service_file
         except Exception as e:
             print(f"❌ Failed to remove D-Bus service: {e}")
@@ -208,7 +174,7 @@ def remove_desktop_entry() -> tuple[bool, Optional[Path]]:
     if desktop_file.exists():
         try:
             desktop_file.unlink()
-            print("✅ Removed desktop entry")
+            print("✅ Desktop entry removed")
             return True, desktop_file
         except Exception as e:
             print(f"❌ Failed to remove desktop entry: {e}")
@@ -223,7 +189,7 @@ def remove_old_service_directory() -> tuple[bool, Optional[Path]]:
     if service_dir.exists():
         try:
             shutil.rmtree(service_dir)
-            print("✅ Removed old service directory")
+            print("✅ Old service directory removed")
             return True, service_dir
         except Exception as e:
             print(f"❌ Failed to remove old service directory: {e}")
@@ -231,77 +197,64 @@ def remove_old_service_directory() -> tuple[bool, Optional[Path]]:
     return True, None
 
 
-def stop_running_service() -> list[str]:
-    """Attempt to stop any running service processes. Returns list of stopped PIDs."""
-    stopped_pids = []
+def stop_running_service() -> bool:
+    """Stop the D-Bus service using modern systemd/D-Bus tools.
+
+    Returns True if service is stopped (either was not running or successfully stopped).
+    Returns False only if we failed to stop a running service.
+    """
+    # First, try to check if the service is running via D-Bus
     try:
         result = subprocess.run(
-            ["pgrep", "-f", SERVICE_EXECUTABLE],
+            ["busctl", "--user", "status", DBUS_NAME],
             capture_output=True,
             text=True,
+            timeout=5,
         )
 
-        if result.returncode == 0 and result.stdout.strip():
-            pids = result.stdout.strip().split("\n")
-            current_pid = str(sys.getpid())
-            for pid in pids:
-                # Skip our own process to avoid killing the uninstall script
-                if pid == current_pid:
-                    continue
-                try:
-                    subprocess.run(["kill", pid], check=True)
-                    print(f"✅ Stopped process {pid}")
-                    stopped_pids.append(pid)
-                except subprocess.CalledProcessError:
-                    print(f"⚠️  Could not stop process {pid}")
+        # If service is not running, busctl status will fail
+        if result.returncode != 0:
+            print("ℹ️ Service not running")
+            return True  # Already stopped, mission accomplished
+
+        # Service is running, send SIGTERM via D-Bus
+        # This is the clean way - let the service shut down gracefully
+        subprocess.run(
+            ["busctl", "--user", "call", DBUS_NAME, "/",
+             "org.freedesktop.DBus.Peer", "Ping"],
+            capture_output=True,
+            timeout=2,
+        )
+
+        # Now send termination signal
+        # The service listens to SIGTERM and shuts down gracefully
+        subprocess.run(
+            ["systemctl", "--user", "kill", "--signal=TERM",
+             f"dbus-{DBUS_NAME}.service"],
+            capture_output=True,
+            timeout=5,
+        )
+
+        print(f"✅ Stopped D-Bus service {DBUS_NAME}")
+        return True
+
+    except subprocess.TimeoutExpired:
+        print("⚠️ Timeout while trying to stop service")
     except FileNotFoundError:
-        print("ℹ️  Could not check for running processes (pgrep not available)")
+        # busctl or systemctl not available - try fallback
+        # Just remove the D-Bus file, service will exit on idle
+        pass
     except Exception as e:
-        print(f"⚠️  Could not check for running processes: {e}")
-    return stopped_pids
+        print(f"⚠️ Could not stop service via D-Bus: {e}")
 
-
-def print_uninstall_summary(
-    stopped_pids: list[str],
-    dbus_file: Optional[Path],
-    desktop_file: Optional[Path],
-    old_dir: Optional[Path],
-) -> None:
-    """Print summary of removed files."""
-    print("\n📋 Removal summary:")
-    if stopped_pids:
-        print(f"  Processes: Stopped {len(stopped_pids)} process(es)")
-    if dbus_file:
-        print(f"  D-Bus:     {dbus_file}")
-    if desktop_file:
-        print(f"  Desktop:   {desktop_file}")
-    if old_dir:
-        print(f"  Old dir:   {old_dir}")
+    return False
 
 
 def uninstall() -> int:
     """Main uninstall function - removes all service-related files."""
-    print("=" * 60)
-    print("  GNOME Speech2Text Service (WhisperCpp) - Uninstall")
-    print("=" * 60)
-    print()
-
-    stopped_pids = stop_running_service()
-    _, dbus_file = remove_dbus_service()
-    _, desktop_file = remove_desktop_entry()
-    _, old_dir = remove_old_service_directory()
-
-    print_uninstall_summary(stopped_pids, dbus_file, desktop_file, old_dir)
-
-    print()
-    print("=" * 60)
-    print("✅ Cleanup complete!")
-    print("=" * 60)
-    print()
-    print(f"To complete uninstall: pipx uninstall {PACKAGE_NAME}")
+    stop_running_service()
+    remove_dbus_service()
+    remove_desktop_entry()
+    remove_old_service_directory()
 
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

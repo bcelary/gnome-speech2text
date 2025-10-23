@@ -113,14 +113,47 @@ upgrade-service:
 	@cd service-whispercpp && $(MAKE) upgrade
 
 # Convenience: Install everything (service + extension)
-install: install-service copy-files compile-schemas
+install:
 	@echo ""
-	@echo "$(GREEN)✅ Complete installation finished (service + extension)$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  Installing GNOME Speech2Text (Service)$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@$(MAKE) --no-print-directory install-service-local
+	@echo ""
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  Installing GNOME Speech2Text (Extension)$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@$(MAKE) --no-print-directory copy-files
+	@$(MAKE) --no-print-directory compile-schemas
+	@echo ""
+	@echo "$(GREEN)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)✅ Complete installation finished!$(NC)"
+	@echo "$(GREEN)════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "  1. Restart GNOME Shell (Alt+F2, type 'r', press Enter on X11)"
+	@echo "     or log out and back in (Wayland)"
+	@echo "  2. Enable the extension in GNOME Extensions app"
+	@echo ""
+	@echo "$(YELLOW)To uninstall:$(NC)"
+	@echo "  make uninstall"
 
 # Convenience: Complete uninstall (extension + service)
-uninstall: remove-extension remove-service
+uninstall:
 	@echo ""
-	@echo "$(GREEN)✅ Complete uninstall finished$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  Uninstalling GNOME Speech2Text (Extension)$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@$(MAKE) --no-print-directory remove-extension
+	@echo ""
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  Uninstalling GNOME Speech2Text (Service)$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
+	@$(MAKE) --no-print-directory remove-service
+	@echo ""
+	@echo "$(GREEN)════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)✅ Complete uninstall finished!$(NC)"
+	@echo "$(GREEN)════════════════════════════════════════════════════════════════$(NC)"
 
 # Convenience: Install extension only
 install-extension: copy-files compile-schemas
@@ -168,20 +201,20 @@ status:
 	@echo "$(BLUE)════════════════════════════════════════════════════════════════$(NC)"
 	@echo ""
 	@echo "$(CYAN)Extension:$(NC)"
-	@echo "  Directory: $(EXTENSION_DIR)"
 	@if [ -d "$(EXTENSION_DIR)" ]; then \
-		echo "  Installed: $(GREEN)yes$(NC)"; \
+		echo "  Installed:   $(GREEN)yes$(NC)"; \
 	else \
-		echo "  Installed: $(RED)no$(NC)"; \
+		echo "  Installed:   $(RED)no$(NC)"; \
 	fi
 	@if [ -f "$(SCHEMAS_DIR)/gschemas.compiled" ]; then \
-		echo "  Schemas: $(GREEN)compiled$(NC)"; \
+		echo "  Schemas:     $(GREEN)compiled$(NC)"; \
 	else \
-		echo "  Schemas: $(RED)not compiled$(NC)"; \
+		echo "  Schemas:     $(RED)not compiled$(NC)"; \
 	fi
-	@echo "  Session: $(XDG_SESSION_TYPE)"
+	@echo "  Session:     $(XDG_SESSION_TYPE)"
+	@echo "  Directory:   $(EXTENSION_DIR)"
 	@echo ""
-	@cd service-whispercpp && $(MAKE) status
+	@cd service-whispercpp && $(MAKE) --no-print-directory status
 
 # Verify schema installation
 verify-schema:

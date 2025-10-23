@@ -54,7 +54,7 @@ Documentation = "https://github.com/bcelary/gnome-speech2text/blob/main/README.m
 [project.scripts]
 # Keep in sync with __init__.py constants
 speech2text-whispercpp-service = "speech2text_whispercpp_service.cli:main"
-speech2text-whispercpp-setup = "speech2text_whispercpp_service.setup:main"
+speech2text-whispercpp-setup = "speech2text_whispercpp_service.setup:setup"
 speech2text-whispercpp-uninstall = "speech2text_whispercpp_service.setup:uninstall"
 
 [tool.setuptools.packages.find]
