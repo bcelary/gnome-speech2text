@@ -327,37 +327,6 @@ wheels = [
 ]
 
 [[package]]
-name = "gnome-speech2text-service-whispercpp"
-version = "0.9"
-source = { editable = "." }
-dependencies = [
-    { name = "requests" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "black" },
-    { name = "build" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "ruff" },
-    { name = "twine" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "requests", specifier = ">=2.25.0" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black" },
-    { name = "build" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "ruff" },
-    { name = "twine" },
-]
-
-[[package]]
 name = "id"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -838,6 +807,37 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/31/9f/11ef35cf1027c1339552ea7bfe6aaa74a8516d8b5caf6e7d338daf54fd80/secretstorage-3.4.0.tar.gz", hash = "sha256:c46e216d6815aff8a8a18706a2fbfd8d53fcbb0dce99301881687a1b0289ef7c", size = 19748, upload-time = "2025-09-09T16:42:13.859Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/91/ff/2e2eed29e02c14a5cb6c57f09b2d5b40e65d6cc71f45b52e0be295ccbc2f/secretstorage-3.4.0-py3-none-any.whl", hash = "sha256:0e3b6265c2c63509fb7415717607e4b2c9ab767b7f344a57473b779ca13bd02e", size = 15272, upload-time = "2025-09-09T16:42:12.744Z" },
+]
+
+[[package]]
+name = "speech2text-whispercpp-service"
+version = "0.9"
+source = { editable = "." }
+dependencies = [
+    { name = "requests" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "black" },
+    { name = "build" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "twine" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "requests", specifier = ">=2.25.0" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black" },
+    { name = "build" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "twine" },
 ]
 
 [[package]]
