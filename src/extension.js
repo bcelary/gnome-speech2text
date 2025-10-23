@@ -1,7 +1,7 @@
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 import { UIManager } from "./lib/uiManager.js";
 import { RecordingController } from "./lib/recordingController.js";
-import { ServiceManager } from "./lib/serviceManager.js";
+import { DBusManager } from "./lib/dbusManager.js";
 import { KeybindingManager } from "./lib/keybindingManager.js";
 import { Logger } from "./lib/logger.js";
 import { SCHEMA_ID } from "./lib/constants.js";
@@ -15,7 +15,7 @@ export default class Speech2TextExtension extends Extension {
     this.settings = null;
     this.uiManager = null;
     this.recordingController = null;
-    this.serviceManager = null;
+    this.dbusManager = null;
     this.keybindingManager = null;
   }
 
@@ -23,15 +23,15 @@ export default class Speech2TextExtension extends Extension {
     logger.info("Enabling Speech2Text extension (D-Bus version)");
     this.settings = this.getSettings(SCHEMA_ID);
 
-    this.serviceManager = new ServiceManager();
-    await this.serviceManager.initialize();
+    this.dbusManager = new DBusManager();
+    await this.dbusManager.initialize();
 
     this.uiManager = new UIManager(this);
     this.uiManager.initialize();
 
     this.recordingController = new RecordingController(
       this.uiManager,
-      this.serviceManager
+      this.dbusManager
     );
     this.recordingController.initialize();
 
@@ -44,7 +44,7 @@ export default class Speech2TextExtension extends Extension {
   }
 
   _setupSignalHandlers() {
-    this.serviceManager.connectSignals({
+    this.dbusManager.connectSignals({
       onTranscriptionReady: (recordingId, text) => {
         this.recordingController.handleTranscriptionReady(recordingId, text);
       },
@@ -76,12 +76,22 @@ export default class Speech2TextExtension extends Extension {
         return;
       }
 
-      const serviceAvailable =
-        await this.serviceManager.ensureServiceAvailable();
-      if (!serviceAvailable) {
+      // Ensure D-Bus connection is valid
+      const connectionReady = await this.dbusManager.ensureConnection();
+      if (!connectionReady) {
         this.uiManager.showErrorNotification(
           "Speech2Text",
           "Service is not available. Please check if the service is running."
+        );
+        return;
+      }
+
+      // Check service status
+      const serviceStatus = await this.dbusManager.checkServiceStatus();
+      if (!serviceStatus.available) {
+        this.uiManager.showErrorNotification(
+          "Speech2Text",
+          serviceStatus.error || "Service is not available."
         );
         return;
       }
@@ -108,17 +118,17 @@ export default class Speech2TextExtension extends Extension {
         this.uiManager = new UIManager(this);
       }
 
-      if (!this.serviceManager) {
-        this.serviceManager = new ServiceManager();
+      if (!this.dbusManager) {
+        this.dbusManager = new DBusManager();
       }
 
-      if (this.uiManager && this.serviceManager) {
+      if (this.uiManager && this.dbusManager) {
         if (this.recordingController) {
           this.recordingController.cleanup();
         }
         this.recordingController = new RecordingController(
           this.uiManager,
-          this.serviceManager
+          this.dbusManager
         );
       }
 
@@ -160,9 +170,9 @@ export default class Speech2TextExtension extends Extension {
       this.uiManager = null;
     }
 
-    if (this.serviceManager) {
-      this.serviceManager.destroy();
-      this.serviceManager = null;
+    if (this.dbusManager) {
+      this.dbusManager.destroy();
+      this.dbusManager = null;
     }
 
     // Clear settings reference

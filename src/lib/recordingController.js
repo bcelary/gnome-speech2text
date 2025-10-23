@@ -5,9 +5,9 @@ import { Logger } from "./logger.js";
 const logger = new Logger("Recording");
 
 export class RecordingController {
-  constructor(uiManager, serviceManager) {
+  constructor(uiManager, dbusManager) {
     this.uiManager = uiManager;
-    this.serviceManager = serviceManager;
+    this.dbusManager = dbusManager;
     this.recordingStateManager = null;
   }
 
@@ -15,27 +15,26 @@ export class RecordingController {
     // Initialize recording state manager
     this.recordingStateManager = new RecordingStateManager(
       this.uiManager.icon,
-      this.serviceManager.dbusManager
+      this.dbusManager
     );
   }
 
   async toggleRecording(settings) {
     // Check if service is available and initialize if needed
-    if (!this.recordingStateManager || !this.serviceManager.isInitialized) {
-      logger.debug("Checking service manager and service status");
+    if (!this.recordingStateManager || !this.dbusManager.isInitialized) {
+      logger.debug("Checking D-Bus manager and service status");
 
-      const serviceAvailable =
-        await this.serviceManager.ensureServiceAvailable();
-      if (!serviceAvailable) {
-        logger.info("Service initialization failed");
+      // Ensure D-Bus connection is established
+      const connectionReady = await this.dbusManager.ensureConnection();
+      if (!connectionReady) {
+        logger.info("D-Bus connection failed");
         this.uiManager.showServiceMissingNotification(
           "Speech-to-text service is not available.\nPlease install the WhisperCpp service."
         );
         return;
       }
 
-      const serviceStatus =
-        await this.serviceManager.dbusManager.checkServiceStatus();
+      const serviceStatus = await this.dbusManager.checkServiceStatus();
       if (!serviceStatus.available) {
         logger.info("Service not available:", serviceStatus.error);
         this.uiManager.showServiceMissingNotification(serviceStatus.error);
@@ -56,16 +55,13 @@ export class RecordingController {
     } else {
       logger.info("Starting recording");
 
-      // Ensure RecordingStateManager has current service manager reference
+      // Ensure RecordingStateManager has current D-Bus manager reference
       if (
         this.recordingStateManager &&
-        this.serviceManager.dbusManager &&
-        this.recordingStateManager.dbusManager !==
-          this.serviceManager.dbusManager
+        this.dbusManager &&
+        this.recordingStateManager.dbusManager !== this.dbusManager
       ) {
-        this.recordingStateManager.updateDbusManager(
-          this.serviceManager.dbusManager
-        );
+        this.recordingStateManager.updateDbusManager(this.dbusManager);
       }
 
       const success = await this.recordingStateManager.startRecording(settings);
@@ -212,7 +208,7 @@ export class RecordingController {
     try {
       // When user clicks "Insert" in preview dialog, only type (don't copy to clipboard)
       // Clipboard copying is handled separately via the "Copy" button or post-recording action
-      await this.serviceManager.typeText(text, false);
+      await this.dbusManager.typeText(text, false);
     } catch (e) {
       logger.error(`Error typing text: ${e}`);
       this.uiManager.showErrorNotification(

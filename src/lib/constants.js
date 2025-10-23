@@ -19,7 +19,6 @@ export const DBUS_PATH = "/org/gnome/Shell/Extensions/Speech2TextWhisperCpp";
 // Service package and executable names (must match service-side constants!)
 // These are used in UI messages and service interaction
 export const SERVICE_EXECUTABLE = "speech2text-whispercpp-service";
-export const SETUP_EXECUTABLE = "speech2text-whispercpp-setup";
 
 // Project URLs
 export const GITHUB_REPO_URL = "https://github.com/bcelary/gnome-speech2text";
