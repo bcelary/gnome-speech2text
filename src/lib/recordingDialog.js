@@ -372,7 +372,7 @@ export class RecordingDialog {
   }
 
   showProcessing() {
-    console.log("Showing processing state");
+    logger.info("Showing processing state");
     this.currentPhase = DialogPhase.PROCESSING;
     this.stopTimer();
     this._buildProcessingUI();
@@ -422,7 +422,7 @@ export class RecordingDialog {
       Main.notify("Speech2Text", "Text copied to clipboard!");
       return true;
     } catch (e) {
-      console.error(`❌ Error copying to clipboard: ${e}`);
+      logger.error(`❌ Error copying to clipboard: ${e}`);
       Main.notify("Speech2Text Error", "Failed to copy to clipboard");
       return false;
     }
@@ -567,7 +567,7 @@ export class RecordingDialog {
   showPreview(text) {
     this.currentPhase = DialogPhase.PREVIEW;
     this.transcribedText = text;
-    console.log(`Showing preview with text: "${text}"`);
+    logger.info(`Showing preview with text: "${text}"`);
     this._buildPreviewUI(text);
   }
 
@@ -635,7 +635,7 @@ export class RecordingDialog {
   }
 
   showError(message) {
-    console.log(`Showing error: ${message}`);
+    logger.info(`Showing error: ${message}`);
     this.currentPhase = DialogPhase.ERROR;
     this.stopTimer();
     this._buildErrorUI(message);
@@ -734,7 +734,7 @@ export class RecordingDialog {
   }
 
   open() {
-    console.log("Opening DBus recording dialog");
+    logger.info("Opening DBus recording dialog");
 
     try {
       // Set panel icon to recording color
@@ -804,7 +804,7 @@ export class RecordingDialog {
         }
       );
     } catch (error) {
-      console.error("Error opening recording dialog:", error);
+      logger.error("Error opening recording dialog:", error);
       if (this.modalBarrier) {
         Main.layoutManager.removeChrome(this.modalBarrier);
       }
@@ -813,7 +813,7 @@ export class RecordingDialog {
   }
 
   close() {
-    console.log("Closing DBus recording dialog");
+    logger.info("Closing DBus recording dialog");
 
     // Prevent multiple cleanup attempts
     if (!this.modalBarrier) {
@@ -981,7 +981,7 @@ export class RecordingDialog {
         }
       }
     } catch (error) {
-      console.error("Error closing recording dialog:", error.message);
+      logger.error("Error closing recording dialog:", error.message);
       // Always clear the modal reference even if cleanup fails
       this.modalBarrier = null;
     }
