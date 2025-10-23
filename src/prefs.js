@@ -65,18 +65,30 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
       valign: Gtk.Align.CENTER,
     });
 
-    // Format the display as mm:ss
-    durationSpinButton.connect("output", (spinButton) => {
-      const value = spinButton.get_value_as_int();
-      spinButton.set_text(this._formatSeconds(value));
-      return true;
+    // Create a label to show the formatted time (mm:ss)
+    const formattedLabel = new Gtk.Label({
+      label: `(${this._formatSeconds(settings.get_int("recording-duration"))})`,
+      css_classes: ["dim-label"],
+      valign: Gtk.Align.CENTER,
     });
 
+    // Update both setting and formatted label when value changes
     durationSpinButton.connect("value-changed", (widget) => {
-      settings.set_int("recording-duration", widget.get_value());
+      const value = widget.get_value();
+      settings.set_int("recording-duration", value);
+      formattedLabel.set_label(`(${this._formatSeconds(value)})`);
     });
 
-    durationRow.add_suffix(durationSpinButton);
+    // Add both formatted label and spinbutton to a box
+    const durationBox = new Gtk.Box({
+      orientation: Gtk.Orientation.HORIZONTAL,
+      spacing: 8,
+      valign: Gtk.Align.CENTER,
+    });
+    durationBox.append(formattedLabel);
+    durationBox.append(durationSpinButton);
+
+    durationRow.add_suffix(durationBox);
     durationRow.activatable_widget = durationSpinButton;
     durationGroup.add(durationRow);
 
