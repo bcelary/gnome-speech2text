@@ -11,15 +11,24 @@ import { Logger } from "./logger.js";
 
 const logger = new Logger("Dialog");
 
+// Dialog phases - what UI is currently being displayed
+const DialogPhase = {
+  RECORDING: "recording", // Recording UI (timer, stop button)
+  PROCESSING: "processing", // Processing UI (🧠 "Processing...")
+  PREVIEW: "preview", // Preview UI (text entry, copy/insert buttons)
+  ERROR: "error", // Error UI (error message)
+};
+
 // Enhanced recording dialog for D-Bus version (matches original design)
 export class RecordingDialog {
-  constructor(onCancel, onInsert, onStop, maxDuration = 60) {
+  constructor(onCancel, onInsert, onStop, maxDuration = 60, panelIcon = null) {
     logger.debug("DBusRecordingDialog constructor called");
 
     this.onCancel = onCancel;
     this.onInsert = onInsert;
     this.onStop = onStop;
     this.maxDuration = maxDuration;
+    this.panelIcon = panelIcon;
     this.startTime = null;
     this.elapsedTime = 0;
     this.timerInterval = null;
@@ -28,7 +37,7 @@ export class RecordingDialog {
     this.openFocusTimeoutId = null;
     this.cleanupTimeoutId = null;
     this.delayedCleanupTimeoutId = null;
-    this.isPreviewMode = false;
+    this.currentPhase = DialogPhase.RECORDING; // Track current dialog phase
     this.transcribedText = "";
     this.textEntry = null;
 
@@ -84,20 +93,21 @@ export class RecordingDialog {
       x_expand: false,
     });
 
-    this.recordingIcon = new St.Label({
-      text: "🎤",
-      style: "font-size: 48px; text-align: center;",
+    const recordingIcon = new St.Icon({
+      icon_name: "audio-input-microphone-symbolic",
+      style_class: "system-status-icon",
+      style: "icon-size: 48px;",
       y_align: Clutter.ActorAlign.CENTER,
     });
 
-    this.recordingLabel = new St.Label({
+    const recordingLabel = new St.Label({
       text: "Recording...",
       style: `font-size: 20px; font-weight: bold; color: ${COLORS.WHITE};`,
       y_align: Clutter.ActorAlign.CENTER,
     });
 
-    headerBox.add_child(this.recordingIcon);
-    headerBox.add_child(this.recordingLabel);
+    headerBox.add_child(recordingIcon);
+    headerBox.add_child(recordingLabel);
 
     // Progress bar container (larger and more prominent)
     this.progressContainer = new St.Widget({
@@ -148,6 +158,8 @@ export class RecordingDialog {
     });
 
     // Buttons
+    const buttonBox = createHorizontalBox();
+
     this.stopButton = createHoverButton(
       "Stop Recording",
       COLORS.DANGER,
@@ -176,6 +188,9 @@ export class RecordingDialog {
       this.onCancel?.();
     });
 
+    buttonBox.add_child(this.stopButton);
+    buttonBox.add_child(this.cancelButton);
+
     // Keyboard handling - single handler for both recording and preview modes
     this.keyboardHandlerId = this.modalBarrier.connect(
       "key-press-event",
@@ -189,7 +204,7 @@ export class RecordingDialog {
           keyval === Clutter.KEY_Return ||
           keyval === Clutter.KEY_KP_Enter
         ) {
-          if (this.isPreviewMode) {
+          if (this.currentPhase === DialogPhase.PREVIEW) {
             // Preview mode: Copy to clipboard and close
             if (this.textEntry) {
               const finalText = this.textEntry.get_text();
@@ -219,8 +234,8 @@ export class RecordingDialog {
 
     this.container.add_child(this.progressContainer);
     this.container.add_child(this.instructionLabel);
-    this.container.add_child(this.stopButton);
-    this.container.add_child(this.cancelButton);
+    this.container.add_child(buttonBox);
+    buttonBox.set_x_align(Clutter.ActorAlign.CENTER);
 
     // Add to modal barrier
     this.modalBarrier.add_child(this.container);
@@ -281,42 +296,75 @@ export class RecordingDialog {
     `);
   }
 
+  _buildProcessingUI() {
+    // Clear existing content
+    this.container.remove_all_children();
+
+    // Processing header
+    const headerBox = new St.BoxLayout({
+      vertical: false,
+      style: "spacing: 15px;",
+      x_align: Clutter.ActorAlign.CENTER,
+      y_align: Clutter.ActorAlign.CENTER,
+      x_expand: false,
+    });
+
+    const processingIcon = new St.Icon({
+      icon_name: "emblem-synchronizing-symbolic",
+      style_class: "system-status-icon",
+      style: "icon-size: 48px;",
+      y_align: Clutter.ActorAlign.CENTER,
+    });
+
+    const processingLabel = new St.Label({
+      text: "Processing...",
+      style: `font-size: 20px; font-weight: bold; color: ${COLORS.WHITE};`,
+      y_align: Clutter.ActorAlign.CENTER,
+    });
+
+    headerBox.add_child(processingIcon);
+    headerBox.add_child(processingLabel);
+
+    // Instructions
+    const instructionLabel = new St.Label({
+      text: "Transcribing your speech...\nPress Escape to cancel.",
+      style: `font-size: 16px; color: ${COLORS.LIGHT_GRAY}; text-align: center;`,
+    });
+
+    // Cancel button
+    const cancelButton = createHoverButton(
+      "Cancel Processing",
+      COLORS.SECONDARY,
+      COLORS.DARK_GRAY
+    );
+
+    cancelButton.connect("clicked", () => {
+      logger.debug("Cancel Processing button clicked!");
+      this.close();
+      this.onCancel?.();
+    });
+
+    // Add to container
+    this.container.add_child(headerBox);
+    headerBox.set_x_align(Clutter.ActorAlign.CENTER);
+
+    this.container.add_child(instructionLabel);
+    this.container.add_child(cancelButton);
+    cancelButton.set_x_align(Clutter.ActorAlign.CENTER);
+
+    // Ensure all widgets are visible
+    headerBox.show();
+    processingIcon.show();
+    processingLabel.show();
+    instructionLabel.show();
+    cancelButton.show();
+  }
+
   showProcessing() {
     console.log("Showing processing state");
-
-    // Update the recording label to show processing
-    if (this.recordingLabel) {
-      this.recordingLabel.set_text("Processing...");
-    }
-
-    // Update the icon to show processing
-    if (this.recordingIcon) {
-      this.recordingIcon.set_text("🧠");
-    }
-
-    // Update instructions
-    if (this.instructionLabel) {
-      this.instructionLabel.set_text(
-        "Transcribing your speech...\nPress Escape to cancel."
-      );
-    }
-
-    // Hide the stop button but keep cancel button visible
-    if (this.stopButton) {
-      this.stopButton.hide();
-    }
-    if (this.cancelButton) {
-      this.cancelButton.show();
-      this.cancelButton.set_label("Cancel Processing");
-    }
-
-    // Stop the timer
+    this.currentPhase = DialogPhase.PROCESSING;
     this.stopTimer();
-
-    // Hide progress bar during processing
-    if (this.progressContainer) {
-      this.progressContainer.hide();
-    }
+    this._buildProcessingUI();
   }
 
   startTimer() {
@@ -369,46 +417,12 @@ export class RecordingDialog {
     }
   }
 
-  showPreview(text) {
-    this.isPreviewMode = true;
-    this.transcribedText = text;
-
-    console.log(`Showing preview with text: "${text}"`);
+  _buildPreviewUI(text) {
+    // Clear existing content
+    this.container.remove_all_children();
 
     // Check if we're on Wayland
     const isWayland = Meta.is_wayland_compositor();
-
-    // Update UI for preview mode - change icon and label
-    if (this.recordingIcon) {
-      this.recordingIcon.set_text("📝");
-    }
-    if (this.recordingLabel) {
-      this.recordingLabel.set_text(
-        isWayland ? "Review & Copy" : "Review & Insert"
-      );
-    }
-
-    // Update instructions
-    if (this.instructionLabel) {
-      this.instructionLabel.set_text(
-        isWayland
-          ? "Review the transcribed text below. Text insertion is not available on Wayland."
-          : "Review the transcribed text below."
-      );
-    }
-
-    // Hide progress container
-    if (this.progressContainer) {
-      this.progressContainer.hide();
-    }
-
-    // Hide processing buttons
-    if (this.stopButton) {
-      this.stopButton.hide();
-    }
-    if (this.cancelButton) {
-      this.cancelButton.hide();
-    }
 
     // Add text display for editing
     this.textEntry = new St.Entry({
@@ -447,7 +461,7 @@ export class RecordingDialog {
       return false;
     });
 
-    // Create new button box for preview
+    // Create button box for preview
     const buttonBox = createHorizontalBox();
 
     // Only show insert button on X11
@@ -516,6 +530,7 @@ export class RecordingDialog {
     buttonBox.add_child(cancelButton);
 
     this.container.add_child(buttonBox);
+    buttonBox.set_x_align(Clutter.ActorAlign.CENTER);
 
     // Add keyboard hint
     const keyboardHint = new St.Label({
@@ -524,56 +539,106 @@ export class RecordingDialog {
     });
     this.container.add_child(keyboardHint);
 
+    // Ensure all widgets are visible
+    this.textEntry.show();
+    buttonBox.show();
+    if (insertButton) {
+      insertButton.show();
+    }
+    copyButton.show();
+    cancelButton.show();
+    keyboardHint.show();
+
     // Keyboard handling is managed by the single handler in _buildRecordingUI()
-    // No need to disconnect/reconnect - it checks this.isPreviewMode
+    // No need to disconnect/reconnect - it checks this.currentPhase
+  }
+
+  showPreview(text) {
+    this.currentPhase = DialogPhase.PREVIEW;
+    this.transcribedText = text;
+    console.log(`Showing preview with text: "${text}"`);
+    this._buildPreviewUI(text);
+  }
+
+  _buildErrorUI(message) {
+    // Clear existing content
+    this.container.remove_all_children();
+
+    // Error header
+    const headerBox = new St.BoxLayout({
+      vertical: false,
+      style: "spacing: 15px;",
+      x_align: Clutter.ActorAlign.CENTER,
+      y_align: Clutter.ActorAlign.CENTER,
+      x_expand: false,
+    });
+
+    const errorIcon = new St.Label({
+      text: "❌",
+      style: "font-size: 48px; text-align: center;",
+      y_align: Clutter.ActorAlign.CENTER,
+    });
+
+    const errorLabel = new St.Label({
+      text: "Error",
+      style: `font-size: 20px; font-weight: bold; color: ${COLORS.DANGER};`,
+      y_align: Clutter.ActorAlign.CENTER,
+    });
+
+    headerBox.add_child(errorIcon);
+    headerBox.add_child(errorLabel);
+
+    // Error message
+    const instructionLabel = new St.Label({
+      text: `${message}\nPress Escape to close.`,
+      style: `font-size: 16px; color: ${COLORS.DANGER}; text-align: center;`,
+    });
+
+    // Close button
+    const closeButton = createHoverButton(
+      "Close",
+      COLORS.SECONDARY,
+      COLORS.DARK_GRAY
+    );
+
+    closeButton.connect("clicked", () => {
+      logger.debug("Close button clicked (error state)");
+      this.close();
+      this.onCancel?.();
+    });
+
+    // Add to container
+    this.container.add_child(headerBox);
+    headerBox.set_x_align(Clutter.ActorAlign.CENTER);
+
+    this.container.add_child(instructionLabel);
+    this.container.add_child(closeButton);
+    closeButton.set_x_align(Clutter.ActorAlign.CENTER);
+
+    // Ensure all widgets are visible
+    headerBox.show();
+    errorIcon.show();
+    errorLabel.show();
+    instructionLabel.show();
+    closeButton.show();
   }
 
   showError(message) {
     console.log(`Showing error: ${message}`);
-
-    // Update the recording label to show error
-    if (this.recordingLabel) {
-      this.recordingLabel.set_text("Error");
-      this.recordingLabel.set_style(
-        `font-size: 20px; font-weight: bold; color: ${COLORS.DANGER};`
-      );
-    }
-
-    // Update the icon to show error
-    if (this.recordingIcon) {
-      this.recordingIcon.set_text("❌");
-    }
-
-    // Update instructions to show error message
-    if (this.instructionLabel) {
-      this.instructionLabel.set_text(`${message}\nPress Escape to close.`);
-      this.instructionLabel.set_style(
-        `font-size: 16px; color: ${COLORS.DANGER}; text-align: center;`
-      );
-    }
-
-    // Hide the stop button and progress bar
-    if (this.stopButton) {
-      this.stopButton.hide();
-    }
-    if (this.progressContainer) {
-      this.progressContainer.hide();
-    }
-
-    // Show only cancel button
-    if (this.cancelButton) {
-      this.cancelButton.show();
-      this.cancelButton.set_label("Close");
-    }
-
-    // Stop the timer
+    this.currentPhase = DialogPhase.ERROR;
     this.stopTimer();
+    this._buildErrorUI(message);
   }
 
   open() {
     console.log("Opening DBus recording dialog");
 
     try {
+      // Set panel icon to recording color
+      if (this.panelIcon) {
+        this.panelIcon.set_style(`color: ${COLORS.PRIMARY};`);
+      }
+
       // Add to UI
       Main.layoutManager.addTopChrome(this.modalBarrier);
 
@@ -654,6 +719,11 @@ export class RecordingDialog {
     }
 
     try {
+      // Reset panel icon color
+      if (this.panelIcon) {
+        this.panelIcon.set_style("");
+      }
+
       // Stop timer first
       this.stopTimer();
 

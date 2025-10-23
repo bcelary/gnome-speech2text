@@ -1,18 +1,18 @@
 import Meta from "gi://Meta";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
-import { COLORS } from "./constants.js";
 import { Logger } from "./logger.js";
 
 const logger = new Logger("State");
 
 export class RecordingStateManager {
-  constructor(icon, dbusManager) {
-    this.icon = icon;
+  constructor(dbusManager) {
     this.dbusManager = dbusManager;
     this.currentRecordingId = null;
     this.recordingDialog = null;
     this.lastRecordingSettings = null; // Store settings for transcription handling
     this.isCancelled = false; // Flag to track if recording was cancelled (user action overrides service)
+    this.handledSignals = new Set(); // Track processed signals to prevent duplicates
+    this.recordingState = "idle"; // State machine: idle, recording, processing, completed, error
   }
 
   // Method to update dbusManager reference when extension recreates it
@@ -20,15 +20,66 @@ export class RecordingStateManager {
     this.dbusManager = dbusManager;
   }
 
+  /**
+   * Validates if a signal should be processed based on common guard conditions
+   * @param {string} recordingId - The recording ID from the signal
+   * @param {string} signalType - Type of signal (e.g., "completed", "transcription", "error")
+   * @param {string|string[]} expectedStates - Expected state(s) for this signal
+   * @returns {boolean} - true if signal should be processed, false if it should be ignored
+   */
+  _validateSignal(recordingId, signalType, expectedStates) {
+    const allowedStates = Array.isArray(expectedStates)
+      ? expectedStates
+      : [expectedStates];
+
+    // GUARD 1: Check if recording was cancelled
+    if (this.isCancelled) {
+      logger.debug(`Recording was cancelled - ignoring ${signalType} signal`);
+      return false;
+    }
+
+    // GUARD 2: Validate recording ID matches current recording
+    if (recordingId !== this.currentRecordingId) {
+      logger.debug(
+        `Ignoring ${signalType} for ${recordingId}, current recording is ${this.currentRecordingId}`
+      );
+      return false;
+    }
+
+    // GUARD 3: Check valid state transition
+    if (!allowedStates.includes(this.recordingState)) {
+      logger.debug(
+        `Invalid state for ${signalType}: ${this.recordingState}, expected one of [${allowedStates.join(", ")}]`
+      );
+      return false;
+    }
+
+    // GUARD 4: Prevent duplicate signal handling
+    const signalKey = `${recordingId}:${signalType}`;
+    if (this.handledSignals.has(signalKey)) {
+      logger.debug(
+        `Already handled ${signalType} for ${recordingId}, ignoring duplicate`
+      );
+      return false;
+    }
+    this.handledSignals.add(signalKey);
+
+    return true;
+  }
+
   async startRecording(settings) {
-    if (this.currentRecordingId) {
-      logger.debug("Recording already in progress");
+    // Check if already recording
+    if (this.currentRecordingId || this.recordingState !== "idle") {
+      logger.debug(
+        `Cannot start recording: already in state ${this.recordingState}`
+      );
       return false;
     }
 
     try {
-      // Reset cancellation flag for new recording
+      // Reset state for new recording session
       this.isCancelled = false;
+      this.handledSignals.clear(); // Clear previous recording's signal tracking
 
       const recordingDuration = settings.get_int("recording-duration");
       const postRecordingAction = settings.get_string("post-recording-action");
@@ -70,26 +121,35 @@ export class RecordingStateManager {
       );
 
       this.currentRecordingId = recordingId;
-      this.updateIcon(true);
+
+      // Transition to recording state
+      this.recordingState = "recording";
+      logger.debug(`State transition: idle → recording (ID: ${recordingId})`);
+
       logger.debug(`Recording started with ID: ${recordingId}`);
       return true;
     } catch (e) {
       logger.error(`Error starting recording: ${e}`);
-      this.updateIcon(false);
+      // Reset to idle on error
+      this.recordingState = "idle";
+      this.currentRecordingId = null;
       return false;
     }
   }
 
   async stopRecording() {
-    if (!this.currentRecordingId) {
-      logger.debug("No recording to stop");
+    if (!this.currentRecordingId || this.recordingState !== "recording") {
+      logger.debug(`Cannot stop recording: state is ${this.recordingState}`);
       return false;
     }
 
     logger.debug(`Stopping recording: ${this.currentRecordingId}`);
     try {
       await this.dbusManager.stopRecording(this.currentRecordingId);
-      this.updateIcon(false);
+
+      // Transition to processing state
+      this.recordingState = "processing";
+      logger.debug(`State transition: recording → processing (manual stop)`);
 
       // Show processing state instead of closing dialog
       if (
@@ -106,6 +166,9 @@ export class RecordingStateManager {
       return true;
     } catch (e) {
       logger.error(`Error stopping recording: ${e}`);
+      // On error, transition to error state
+      this.recordingState = "error";
+      logger.debug(`State transition: recording → error (stop failed)`);
       return false;
     }
   }
@@ -114,12 +177,13 @@ export class RecordingStateManager {
     logger.debug(`=== RECORDING COMPLETED ===`);
     logger.debug(`Recording ID: ${recordingId}`);
     logger.debug(`Current Recording ID: ${this.currentRecordingId}`);
+    logger.debug(`Current State: ${this.recordingState}`);
     logger.debug(`Dialog exists: ${!!this.recordingDialog}`);
+    logger.debug(`Dialog phase: ${this.recordingDialog?.currentPhase}`);
     logger.debug(`Is cancelled: ${this.isCancelled}`);
 
-    // If the recording was cancelled, ignore the completion
-    if (this.isCancelled) {
-      logger.debug("Recording was cancelled - ignoring completion");
+    // Validate signal using common guard logic
+    if (!this._validateSignal(recordingId, "completed", "recording")) {
       return;
     }
 
@@ -128,14 +192,26 @@ export class RecordingStateManager {
       logger.debug(
         `Recording ${recordingId} completed but dialog already closed (manual stop)`
       );
+      // Still transition to processing state
+      this.recordingState = "processing";
       return;
     }
 
-    // Show processing state
-    if (
-      this.recordingDialog &&
-      typeof this.recordingDialog.showProcessing === "function"
-    ) {
+    // Check the dialog's current phase to avoid overwriting the preview with processing UI.
+    const currentPhase = this.recordingDialog.currentPhase;
+    if (currentPhase === "preview" || currentPhase === "closed") {
+      logger.debug(
+        `Dialog already in ${currentPhase} phase - not showing processing`
+      );
+      return;
+    }
+
+    // Transition to processing state
+    this.recordingState = "processing";
+    logger.debug(`State transition: recording → processing`);
+
+    // Show processing state only if we're still in recording phase
+    if (typeof this.recordingDialog.showProcessing === "function") {
       logger.debug("Showing processing state after automatic completion");
       this.recordingDialog.showProcessing();
     } else {
@@ -155,8 +231,14 @@ export class RecordingStateManager {
       "Recording cancelled by user - discarding audio without processing"
     );
 
+    const previousState = this.recordingState;
+
     // Set cancellation flag FIRST to override any incoming service signals
     this.isCancelled = true;
+
+    // Transition to idle state immediately (blocks all signal processing)
+    this.recordingState = "idle";
+    logger.debug(`State transition: ${previousState} → idle (cancelled)`);
 
     // Use the D-Bus service CancelRecording method to properly clean up
     try {
@@ -169,7 +251,6 @@ export class RecordingStateManager {
 
     // Clean up our local state
     this.currentRecordingId = null;
-    this.updateIcon(false);
 
     // Close dialog on cancel with error handling
     if (this.recordingDialog) {
@@ -197,27 +278,21 @@ export class RecordingStateManager {
     return this.currentRecordingId !== null;
   }
 
-  updateIcon(isRecording) {
-    if (this.icon) {
-      if (isRecording) {
-        this.icon.set_style(`color: ${COLORS.PRIMARY};`);
-      } else {
-        this.icon.set_style("");
-      }
-    }
+  getRecordingState() {
+    return this.recordingState;
   }
 
   handleTranscriptionReady(recordingId, text, settings) {
     logger.debug(`=== TRANSCRIPTION READY ===`);
     logger.debug(`Recording ID: ${recordingId}`);
     logger.debug(`Current Recording ID: ${this.currentRecordingId}`);
+    logger.debug(`Current State: ${this.recordingState}`);
     logger.debug(`Text: "${text}"`);
     logger.debug(`Dialog exists: ${!!this.recordingDialog}`);
     logger.debug(`Is cancelled: ${this.isCancelled}`);
 
-    // If the recording was cancelled, ignore the transcription
-    if (this.isCancelled) {
-      logger.debug("Recording was cancelled - ignoring transcription");
+    // Validate signal using common guard logic
+    if (!this._validateSignal(recordingId, "transcription", "processing")) {
       return { action: "ignored", text: null };
     }
 
@@ -226,13 +301,21 @@ export class RecordingStateManager {
       logger.debug("No speech detected - showing notification");
       Main.notify("Speech2Text", "No speech detected");
 
+      // Transition to completed state
+      this.recordingState = "completed";
+      logger.debug(
+        `State transition: processing → completed (empty transcription)`
+      );
+
       // Close dialog and clean up
       if (this.recordingDialog) {
         this.recordingDialog.close();
         this.recordingDialog = null;
       }
       this.currentRecordingId = null;
-      this.updateIcon(false);
+
+      // Reset to idle state
+      this.recordingState = "idle";
       return { action: "ignored", text: null };
     }
 
@@ -264,6 +347,11 @@ export class RecordingStateManager {
       logger.debug(
         "Extension will handle text insertion/copying via preview dialog"
       );
+
+      // Transition to completed state (preview is a "completed" state, user decides next action)
+      this.recordingState = "completed";
+      logger.debug(`State transition: processing → completed (preview mode)`);
+
       if (
         this.recordingDialog &&
         typeof this.recordingDialog.showPreview === "function"
@@ -271,11 +359,13 @@ export class RecordingStateManager {
         logger.debug("Using existing dialog for preview");
         this.recordingDialog.showPreview(text);
         this.currentRecordingId = null;
+        // Note: We stay in "completed" state until dialog closes, then cleanup() resets to "idle"
         return { action: "preview", text };
       } else {
         logger.debug("No dialog available, need to create preview dialog");
         this.currentRecordingId = null;
-        this.updateIcon(false);
+        // Reset to idle since we're done
+        this.recordingState = "idle";
         return { action: "createPreview", text };
       }
     } else {
@@ -284,12 +374,20 @@ export class RecordingStateManager {
       // Valid auto-actions: type_only, copy_only, type_and_copy
       logger.debug(`=== AUTO-ACTION MODE: ${postRecordingAction} ===`);
       logger.debug("Service handled all text insertion/copying automatically");
+
+      // Transition to completed state
+      this.recordingState = "completed";
+      logger.debug(`State transition: processing → completed (auto-action)`);
+
       if (this.recordingDialog) {
         this.recordingDialog.close();
         this.recordingDialog = null;
       }
       this.currentRecordingId = null;
-      this.updateIcon(false);
+
+      // Reset to idle state
+      this.recordingState = "idle";
+
       // Return "service_handled" to indicate service processed everything, extension does nothing
       return { action: "service_handled", text };
     }
@@ -299,14 +397,20 @@ export class RecordingStateManager {
     logger.debug(`=== RECORDING ERROR ===`);
     logger.debug(`Recording ID: ${recordingId}`);
     logger.debug(`Current Recording ID: ${this.currentRecordingId}`);
+    logger.debug(`Current State: ${this.recordingState}`);
     logger.debug(`Error: ${errorMessage}`);
     logger.debug(`Is cancelled: ${this.isCancelled}`);
 
-    // If the recording was cancelled, ignore the error
-    if (this.isCancelled) {
-      logger.debug("Recording was cancelled - ignoring error");
+    // Validate signal using common guard logic (errors can occur in "recording" or "processing" states)
+    if (
+      !this._validateSignal(recordingId, "error", ["recording", "processing"])
+    ) {
       return;
     }
+
+    // Transition to error state
+    this.recordingState = "error";
+    logger.debug(`State transition: ${this.recordingState} → error`);
 
     // Show error in dialog if available
     if (
@@ -316,20 +420,31 @@ export class RecordingStateManager {
       this.recordingDialog.showError(errorMessage);
     } else {
       logger.debug("No dialog available for error display");
+      // Show notification if no dialog
+      Main.notify("Speech2Text Error", errorMessage);
     }
 
     // Clean up state
     this.currentRecordingId = null;
-    this.updateIcon(false);
+
+    // Reset to idle state after error
+    this.recordingState = "idle";
   }
 
   cleanup() {
     logger.debug("Cleaning up recording state manager");
+    logger.debug(`Current state before cleanup: ${this.recordingState}`);
 
     // Reset all state
     this.currentRecordingId = null;
     this.isCancelled = false;
     this.lastRecordingSettings = null;
+    this.handledSignals.clear(); // Clear signal tracking
+
+    // Reset state machine to idle
+    const previousState = this.recordingState;
+    this.recordingState = "idle";
+    logger.debug(`State transition: ${previousState} → idle (cleanup)`);
 
     // Clean up dialog with error handling
     if (this.recordingDialog) {
@@ -344,13 +459,6 @@ export class RecordingStateManager {
       } finally {
         this.recordingDialog = null;
       }
-    }
-
-    // Reset icon safely
-    try {
-      this.updateIcon(false);
-    } catch (error) {
-      logger.debug("Error resetting icon during cleanup:", error.message);
     }
   }
 }

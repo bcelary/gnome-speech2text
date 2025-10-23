@@ -13,10 +13,7 @@ export class RecordingController {
 
   initialize() {
     // Initialize recording state manager
-    this.recordingStateManager = new RecordingStateManager(
-      this.uiManager.icon,
-      this.dbusManager
-    );
+    this.recordingStateManager = new RecordingStateManager(this.dbusManager);
   }
 
   async toggleRecording(settings) {
@@ -85,7 +82,8 @@ export class RecordingController {
             logger.debug("Stop recording button clicked");
             this.recordingStateManager.stopRecording();
           },
-          settings.get_int("recording-duration")
+          settings.get_int("recording-duration"),
+          this.uiManager.icon
         );
 
         this.recordingStateManager.setRecordingDialog(recordingDialog);
