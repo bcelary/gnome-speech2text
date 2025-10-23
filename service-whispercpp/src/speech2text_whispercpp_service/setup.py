@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from . import (
+from speech2text_whispercpp_service import (
     DBUS_NAME,
     DBUS_SERVICE_FILE,
     PACKAGE_NAME,

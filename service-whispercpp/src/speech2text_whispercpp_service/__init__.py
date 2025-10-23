@@ -6,8 +6,6 @@ extension using whisper.cpp server for local speech recognition.
 Forked from kavehtehrani/gnome-speech2text
 """
 
-from .service import main
-
 __version__ = "2.0.0"
 __author__ = "Bartek Celary"
 __email__ = "bcelary@gmail.com"
@@ -31,7 +29,6 @@ EXTENSION_UUID = "speech2text-whispercpp@bcelary.github"
 GITHUB_REPO_URL = "https://github.com/bcelary/gnome-speech2text"
 
 __all__ = [
-    "main",
     "PACKAGE_NAME",
     "SERVICE_EXECUTABLE",
     "UNINSTALL_EXECUTABLE",
