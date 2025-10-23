@@ -1,6 +1,9 @@
 import Meta from "gi://Meta";
 import Shell from "gi://Shell";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import { Logger } from "./logger.js";
+
+const logger = new Logger("Keybinding");
 
 export class KeybindingManager {
   constructor(extensionCore) {
@@ -17,8 +20,6 @@ export class KeybindingManager {
     if (shortcuts.length > 0) {
       this.currentKeybinding = shortcuts[0];
     } else {
-      // Use a much safer shortcut that doesn't conflict with system shortcuts
-      // Avoid Ctrl+C (SIGINT), Ctrl+Z (SIGTSTP), and workspace navigation shortcuts
       this.currentKeybinding = "<Super><Alt>space";
       this.extensionCore.settings.set_strv("toggle-recording", [
         this.currentKeybinding,
@@ -34,12 +35,12 @@ export class KeybindingManager {
       Meta.KeyBindingFlags.NONE,
       Shell.ActionMode.NORMAL,
       () => {
-        console.log("Keyboard shortcut triggered");
+        logger.debug("Keyboard shortcut triggered");
         // Use direct reference to this extension instance
         self.extensionCore.toggleRecording();
       }
     );
-    console.log(`Keybinding registered: ${this.currentKeybinding}`);
+    logger.info(`Keybinding registered: ${this.currentKeybinding}`);
   }
 
   cleanup() {

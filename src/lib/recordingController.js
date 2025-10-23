@@ -1,6 +1,9 @@
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { RecordingStateManager } from "./recordingStateManager.js";
 import { RecordingDialog } from "./recordingDialog.js";
+import { Logger } from "./logger.js";
+
+const logger = new Logger("Recording");
 
 export class RecordingController {
   constructor(uiManager, serviceManager) {
@@ -20,12 +23,12 @@ export class RecordingController {
   async toggleRecording(settings) {
     // Check if service is available and initialize if needed
     if (!this.recordingStateManager || !this.serviceManager.isInitialized) {
-      console.log("Checking service manager and service status");
+      logger.debug("Checking service manager and service status");
 
       const serviceAvailable =
         await this.serviceManager.ensureServiceAvailable();
       if (!serviceAvailable) {
-        console.log("Service initialization failed");
+        logger.info("Service initialization failed");
         this.uiManager.showServiceMissingNotification(
           "Speech-to-text service is not available.\nPlease install the WhisperCpp service."
         );
@@ -35,24 +38,24 @@ export class RecordingController {
       const serviceStatus =
         await this.serviceManager.dbusManager.checkServiceStatus();
       if (!serviceStatus.available) {
-        console.log("Service not available:", serviceStatus.error);
+        logger.info("Service not available:", serviceStatus.error);
         this.uiManager.showServiceMissingNotification(serviceStatus.error);
         return;
       }
 
       // Initialize recording state manager if not already done
       if (!this.recordingStateManager) {
-        console.log("Initializing recording state manager");
+        logger.debug("Initializing recording state manager");
         this.initialize();
       }
     }
 
     // Now handle the actual recording toggle
     if (this.recordingStateManager.isRecording()) {
-      console.log("Stopping recording");
+      logger.info("Stopping recording");
       this.recordingStateManager.stopRecording();
     } else {
-      console.log("Starting recording");
+      logger.info("Starting recording");
 
       // Ensure RecordingStateManager has current service manager reference
       if (
@@ -78,20 +81,20 @@ export class RecordingController {
           },
           (text) => {
             // Insert callback
-            console.log(`Inserting text: ${text}`);
+            logger.debug(`Inserting text: ${text}`);
             this._typeText(text);
             this.recordingStateManager.setRecordingDialog(null);
           },
           () => {
             // Stop callback
-            console.log("Stop recording button clicked");
+            logger.debug("Stop recording button clicked");
             this.recordingStateManager.stopRecording();
           },
           settings.get_int("recording-duration")
         );
 
         this.recordingStateManager.setRecordingDialog(recordingDialog);
-        console.log(
+        logger.debug(
           "RecordingController: Created and set recording dialog, opening now"
         );
         recordingDialog.open();
@@ -106,11 +109,11 @@ export class RecordingController {
 
   handleRecordingStopped(recordingId, reason) {
     if (!this.recordingStateManager) {
-      console.log("Recording state manager not initialized");
+      logger.debug("Recording state manager not initialized");
       return;
     }
 
-    console.log(
+    logger.debug(
       `RecordingController: Recording stopped - ID: ${recordingId}, reason: ${reason}`
     );
     if (reason === "completed") {
@@ -123,11 +126,11 @@ export class RecordingController {
 
   handleTranscriptionReady(recordingId, text) {
     if (!this.recordingStateManager) {
-      console.log("Recording state manager not initialized");
+      logger.debug("Recording state manager not initialized");
       return;
     }
 
-    console.log(
+    logger.debug(
       `RecordingController: Transcription ready - ID: ${recordingId}, text: "${text}"`
     );
     const result = this.recordingStateManager.handleTranscriptionReady(
@@ -136,34 +139,39 @@ export class RecordingController {
       this.uiManager.extensionCore.settings
     );
 
-    console.log(
+    logger.debug(
       `RecordingController: Transcription result - action: ${result?.action}`
     );
-    if (result && result.action === "insert") {
-      this._typeText(result.text);
+    if (result && result.action === "service_handled") {
+      // Service already handled all post-processing (type_only, copy_only, type_and_copy)
+      // Extension should NOT insert or copy - service did it automatically
+      logger.debug("Service handled post-processing automatically - no action needed from extension");
+    } else if (result && result.action === "preview") {
+      // Preview mode - dialog is already showing, user will manually insert/copy
+      logger.debug("Preview mode - user will manually insert/copy via dialog");
     } else if (result && result.action === "createPreview") {
-      console.log("Creating new preview dialog for transcribed text");
+      logger.debug("Creating new preview dialog for transcribed text");
       this._showPreviewDialog(result.text);
     } else if (result && result.action === "ignored") {
-      console.log("Transcription ignored - recording was cancelled");
+      logger.debug("Transcription ignored - recording was cancelled");
       // Nothing to do - recording was cancelled
     }
   }
 
   handleRecordingError(recordingId, errorMessage) {
     if (!this.recordingStateManager) {
-      console.log("Recording state manager not initialized");
+      logger.debug("Recording state manager not initialized");
       return;
     }
 
     // Log error to journal for debugging
-    console.error(`Recording error for ${recordingId}: ${errorMessage}`);
+    logger.error(`Recording error for ${recordingId}: ${errorMessage}`);
 
     this.recordingStateManager.handleRecordingError(recordingId, errorMessage);
   }
 
   _showPreviewDialog(text) {
-    console.log("Creating preview dialog for text:", text);
+    logger.debug("Creating preview dialog for text:", text);
 
     // Create a new preview-only dialog
     const previewDialog = new RecordingDialog(
@@ -173,7 +181,7 @@ export class RecordingController {
       },
       (finalText) => {
         // Insert callback
-        console.log(`Inserting text from preview: ${finalText}`);
+        logger.debug(`Inserting text from preview: ${finalText}`);
         this._typeText(finalText);
         previewDialog.close();
       },
@@ -182,20 +190,30 @@ export class RecordingController {
     );
 
     // First open the dialog, then show preview
-    console.log("Opening preview dialog");
+    logger.debug("Opening preview dialog");
     previewDialog.open();
-    console.log("Showing preview in opened dialog");
+    logger.debug("Showing preview in opened dialog");
     previewDialog.showPreview(text);
   }
 
   async _typeText(text) {
+    // IMPORTANT: This method should ONLY be called from preview dialog callbacks
+    // when the user explicitly clicks "Insert" button.
+    //
+    // Valid call sites:
+    // 1. Line 82: Preview dialog "Insert" button callback (initial dialog)
+    // 2. Line 177: Preview dialog insert callback (_showPreviewDialog)
+    //
+    // This method should NEVER be called for automatic post-recording actions
+    // (type_only, copy_only, type_and_copy) - those are handled by the service
+    // in Recording._execute_post_processing().
+
     try {
-      await this.serviceManager.typeText(
-        text,
-        this.uiManager.extensionCore.settings.get_boolean("copy-to-clipboard")
-      );
+      // When user clicks "Insert" in preview dialog, only type (don't copy to clipboard)
+      // Clipboard copying is handled separately via the "Copy" button or post-recording action
+      await this.serviceManager.typeText(text, false);
     } catch (e) {
-      console.error(`Error typing text: ${e}`);
+      logger.error(`Error typing text: ${e}`);
       this.uiManager.showErrorNotification(
         "Speech2Text Error",
         "Failed to insert text."
@@ -205,7 +223,7 @@ export class RecordingController {
 
   cleanup() {
     if (this.recordingStateManager) {
-      console.log("Cleaning up recording state manager");
+      logger.debug("Cleaning up recording state manager");
       this.recordingStateManager.cleanup();
       this.recordingStateManager = null;
     }

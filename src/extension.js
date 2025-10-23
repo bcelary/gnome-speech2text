@@ -3,7 +3,9 @@ import { UIManager } from "./lib/uiManager.js";
 import { RecordingController } from "./lib/recordingController.js";
 import { ServiceManager } from "./lib/serviceManager.js";
 import { KeybindingManager } from "./lib/keybindingManager.js";
+import { Logger } from "./lib/logger.js";
 
+const logger = new Logger("Extension");
 let extensionInstance = null;
 
 export default class Speech2TextExtension extends Extension {
@@ -18,8 +20,8 @@ export default class Speech2TextExtension extends Extension {
   }
 
   async enable() {
-    console.log("Enabling Speech2Text extension (D-Bus version)");
-    this.settings = this.getSettings("org.gnome.shell.extensions.speech2text");
+    logger.info("Enabling Speech2Text extension (D-Bus version)");
+    this.settings = this.getSettings("org.gnome.shell.extensions.speech2text-whispercpp");
 
     this.serviceManager = new ServiceManager();
     await this.serviceManager.initialize();
@@ -39,7 +41,7 @@ export default class Speech2TextExtension extends Extension {
     this._setupSignalHandlers();
 
     extensionInstance = this;
-    console.log("Extension enabled successfully");
+    logger.info("Extension enabled successfully");
   }
 
   _setupSignalHandlers() {
@@ -61,17 +63,17 @@ export default class Speech2TextExtension extends Extension {
 
   async toggleRecording() {
     try {
-      console.log("=== TOGGLE RECORDING (D-Bus) ===");
+      logger.debug("=== TOGGLE RECORDING (D-Bus) ===");
 
       if (!this.settings || !this.uiManager) {
-        console.log(
+        logger.info(
           "Extension state inconsistent, attempting comprehensive auto-recovery"
         );
         await this._performAutoRecovery();
       }
 
       if (!this.settings || !this.uiManager) {
-        console.error("Required components still missing after auto-recovery");
+        logger.error("Required components still missing after auto-recovery");
         return;
       }
 
@@ -87,7 +89,7 @@ export default class Speech2TextExtension extends Extension {
 
       await this.recordingController.toggleRecording(this.settings);
     } catch (error) {
-      console.error("Error in toggleRecording:", error);
+      logger.error("Error in toggleRecording:", error);
       this.uiManager.showErrorNotification(
         "Speech2Text Error",
         "An error occurred while toggling recording. Please check the logs."
@@ -97,11 +99,11 @@ export default class Speech2TextExtension extends Extension {
 
   async _performAutoRecovery() {
     try {
-      console.log("Attempting full extension state recovery");
+      logger.info("Attempting full extension state recovery");
 
       if (!this.settings) {
         this.settings = this.getSettings(
-          "org.gnome.shell.extensions.speech2text"
+          "org.gnome.shell.extensions.speech2text-whispercpp"
         );
       }
 
@@ -132,7 +134,7 @@ export default class Speech2TextExtension extends Extension {
         this._setupSignalHandlers();
       }
     } catch (recoveryError) {
-      console.error("Comprehensive auto-recovery failed:", recoveryError);
+      logger.error("Comprehensive auto-recovery failed:", recoveryError);
       this.uiManager?.showErrorNotification(
         "Speech2Text Error",
         "Extension recovery failed. Please restart GNOME Shell: Alt+F2 → 'r' → Enter"
@@ -142,7 +144,7 @@ export default class Speech2TextExtension extends Extension {
   }
 
   disable() {
-    console.log("Disabling Speech2Text extension (D-Bus version)");
+    logger.info("Disabling Speech2Text extension (D-Bus version)");
 
     extensionInstance = null;
 
@@ -153,13 +155,13 @@ export default class Speech2TextExtension extends Extension {
     }
 
     if (this.recordingController) {
-      console.log("Cleaning up recording controller");
+      logger.debug("Cleaning up recording controller");
       this.recordingController.cleanup();
       this.recordingController = null;
     }
 
     if (this.uiManager) {
-      console.log("Cleaning up UI manager");
+      logger.debug("Cleaning up UI manager");
       this.uiManager.cleanup();
       this.uiManager = null;
     }

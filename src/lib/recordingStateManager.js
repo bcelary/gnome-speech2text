@@ -1,6 +1,9 @@
 import Meta from "gi://Meta";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { COLORS } from "./constants.js";
+import { Logger } from "./logger.js";
+
+const logger = new Logger("State");
 
 export class RecordingStateManager {
   constructor(icon, dbusManager) {
@@ -9,7 +12,7 @@ export class RecordingStateManager {
     this.currentRecordingId = null;
     this.recordingDialog = null;
     this.lastRecordingSettings = null; // Store settings for transcription handling
-    this.isCancelled = false; // Flag to track if recording was cancelled
+    this.isCancelled = false; // Flag to track if recording was cancelled (user action overrides service)
   }
 
   // Method to update dbusManager reference when extension recreates it
@@ -19,7 +22,7 @@ export class RecordingStateManager {
 
   async startRecording(settings) {
     if (this.currentRecordingId) {
-      console.log("Recording already in progress");
+      logger.debug("Recording already in progress");
       return false;
     }
 
@@ -28,41 +31,43 @@ export class RecordingStateManager {
       this.isCancelled = false;
 
       const recordingDuration = settings.get_int("recording-duration");
-      const copyToClipboard = settings.get_boolean("copy-to-clipboard");
-      const skipPreviewX11 = settings.get_boolean("skip-preview-x11");
+      const postRecordingAction = settings.get_string("post-recording-action");
+      const isWayland = Meta.is_wayland_compositor();
 
       // Store settings for later use in transcription handling
       this.lastRecordingSettings = {
         recordingDuration,
-        copyToClipboard,
-        skipPreviewX11,
+        postRecordingAction,
       };
 
-      // Always use preview mode for D-Bus service (it just controls service behavior)
-      // We'll handle the skip-preview logic in the extension when we get the transcription
-      const previewMode = true;
+      // On Wayland, fallback to preview mode for auto-type actions
+      let effectiveAction = postRecordingAction;
+      if (isWayland && (postRecordingAction === "type_only" || postRecordingAction === "type_and_copy")) {
+        logger.debug(`Wayland detected: falling back from ${postRecordingAction} to preview mode`);
+        // For Wayland, convert type-based actions to copy_only if they had copy, otherwise preview
+        effectiveAction = postRecordingAction === "type_and_copy" ? "copy_only" : "preview";
+      }
 
-      console.log(
-        `Starting recording: duration=${recordingDuration}, clipboard=${copyToClipboard}, skipPreview=${skipPreviewX11}`
+      logger.debug(
+        `Starting recording: duration=${recordingDuration}, action=${effectiveAction}`
       );
 
       if (!this.dbusManager) {
-        console.error("RecordingStateManager: dbusManager is null");
+        logger.error("RecordingStateManager: dbusManager is null");
         return false;
       }
 
       const recordingId = await this.dbusManager.startRecording(
         recordingDuration,
-        copyToClipboard,
-        previewMode
+        effectiveAction
       );
 
       this.currentRecordingId = recordingId;
       this.updateIcon(true);
-      console.log(`Recording started with ID: ${recordingId}`);
+      logger.debug(`Recording started with ID: ${recordingId}`);
       return true;
     } catch (e) {
-      console.error(`Error starting recording: ${e}`);
+      logger.error(`Error starting recording: ${e}`);
       this.updateIcon(false);
       return false;
     }
@@ -70,11 +75,11 @@ export class RecordingStateManager {
 
   async stopRecording() {
     if (!this.currentRecordingId) {
-      console.log("No recording to stop");
+      logger.debug("No recording to stop");
       return false;
     }
 
-    console.log(`Stopping recording: ${this.currentRecordingId}`);
+    logger.debug(`Stopping recording: ${this.currentRecordingId}`);
     try {
       await this.dbusManager.stopRecording(this.currentRecordingId);
       this.updateIcon(false);
@@ -84,37 +89,36 @@ export class RecordingStateManager {
         this.recordingDialog &&
         typeof this.recordingDialog.showProcessing === "function"
       ) {
-        console.log("Showing processing state after manual stop");
+        logger.debug("Showing processing state after manual stop");
         this.recordingDialog.showProcessing();
       }
 
       // Don't set currentRecordingId to null or close dialog yet
       // Wait for transcription to complete
-      // Also don't reset isCancelled flag here - we want to process the audio
 
       return true;
     } catch (e) {
-      console.error(`Error stopping recording: ${e}`);
+      logger.error(`Error stopping recording: ${e}`);
       return false;
     }
   }
 
   handleRecordingCompleted(recordingId) {
-    console.log(`=== RECORDING COMPLETED ===`);
-    console.log(`Recording ID: ${recordingId}`);
-    console.log(`Current Recording ID: ${this.currentRecordingId}`);
-    console.log(`Dialog exists: ${!!this.recordingDialog}`);
-    console.log(`Is cancelled: ${this.isCancelled}`);
+    logger.debug(`=== RECORDING COMPLETED ===`);
+    logger.debug(`Recording ID: ${recordingId}`);
+    logger.debug(`Current Recording ID: ${this.currentRecordingId}`);
+    logger.debug(`Dialog exists: ${!!this.recordingDialog}`);
+    logger.debug(`Is cancelled: ${this.isCancelled}`);
 
     // If the recording was cancelled, ignore the completion
     if (this.isCancelled) {
-      console.log("Recording was cancelled - ignoring completion");
+      logger.debug("Recording was cancelled - ignoring completion");
       return;
     }
 
     // If we don't have a dialog, the recording was already stopped manually
     if (!this.recordingDialog) {
-      console.log(
+      logger.debug(
         `Recording ${recordingId} completed but dialog already closed (manual stop)`
       );
       return;
@@ -125,10 +129,10 @@ export class RecordingStateManager {
       this.recordingDialog &&
       typeof this.recordingDialog.showProcessing === "function"
     ) {
-      console.log("Showing processing state after automatic completion");
+      logger.debug("Showing processing state after automatic completion");
       this.recordingDialog.showProcessing();
     } else {
-      console.log(`ERROR: Dialog does not have showProcessing method`);
+      logger.debug(`ERROR: Dialog does not have showProcessing method`);
     }
 
     // Don't close the dialog here - wait for transcription
@@ -140,17 +144,19 @@ export class RecordingStateManager {
       return false;
     }
 
-    console.log(
+    logger.debug(
       "Recording cancelled by user - discarding audio without processing"
     );
-    this.isCancelled = true; // Set the cancellation flag
+
+    // Set cancellation flag FIRST to override any incoming service signals
+    this.isCancelled = true;
 
     // Use the D-Bus service CancelRecording method to properly clean up
     try {
       await this.dbusManager.cancelRecording(this.currentRecordingId);
-      console.log("D-Bus cancel recording completed successfully");
+      logger.debug("D-Bus cancel recording completed successfully");
     } catch (error) {
-      console.log("Error calling D-Bus cancel recording:", error.message);
+      logger.debug("Error calling D-Bus cancel recording:", error.message);
       // Continue with local cleanup even if D-Bus call fails
     }
 
@@ -161,10 +167,10 @@ export class RecordingStateManager {
     // Close dialog on cancel with error handling
     if (this.recordingDialog) {
       try {
-        console.log("Closing dialog after cancellation");
+        logger.debug("Closing dialog after cancellation");
         this.recordingDialog.close();
       } catch (error) {
-        console.log("Error closing dialog after cancellation:", error.message);
+        logger.debug("Error closing dialog after cancellation:", error.message);
       } finally {
         this.recordingDialog = null;
       }
@@ -174,9 +180,9 @@ export class RecordingStateManager {
   }
 
   setRecordingDialog(dialog) {
-    console.log(`=== SETTING RECORDING DIALOG ===`);
-    console.log(`Previous dialog: ${!!this.recordingDialog}`);
-    console.log(`New dialog: ${!!dialog}`);
+    logger.debug(`=== SETTING RECORDING DIALOG ===`);
+    logger.debug(`Previous dialog: ${!!this.recordingDialog}`);
+    logger.debug(`New dialog: ${!!dialog}`);
     this.recordingDialog = dialog;
   }
 
@@ -195,22 +201,22 @@ export class RecordingStateManager {
   }
 
   handleTranscriptionReady(recordingId, text, settings) {
-    console.log(`=== TRANSCRIPTION READY ===`);
-    console.log(`Recording ID: ${recordingId}`);
-    console.log(`Current Recording ID: ${this.currentRecordingId}`);
-    console.log(`Text: "${text}"`);
-    console.log(`Dialog exists: ${!!this.recordingDialog}`);
-    console.log(`Is cancelled: ${this.isCancelled}`);
+    logger.debug(`=== TRANSCRIPTION READY ===`);
+    logger.debug(`Recording ID: ${recordingId}`);
+    logger.debug(`Current Recording ID: ${this.currentRecordingId}`);
+    logger.debug(`Text: "${text}"`);
+    logger.debug(`Dialog exists: ${!!this.recordingDialog}`);
+    logger.debug(`Is cancelled: ${this.isCancelled}`);
 
     // If the recording was cancelled, ignore the transcription
     if (this.isCancelled) {
-      console.log("Recording was cancelled - ignoring transcription");
+      logger.debug("Recording was cancelled - ignoring transcription");
       return { action: "ignored", text: null };
     }
 
     // Check if transcription is empty (no speech detected)
     if (!text || text.trim().length === 0) {
-      console.log("No speech detected - showing notification");
+      logger.debug("No speech detected - showing notification");
       Main.notify("Speech2Text", "No speech detected");
 
       // Close dialog and clean up
@@ -223,57 +229,67 @@ export class RecordingStateManager {
       return { action: "ignored", text: null };
     }
 
-    // Check if we should skip preview and auto-insert
-    const skipPreviewX11 = settings.get_boolean("skip-preview-x11");
+    // Use the post-recording action that was set when recording STARTED
+    // (not the current setting, in case user changed it mid-recording)
+    const postRecordingAction = this.lastRecordingSettings?.postRecordingAction || "preview";
     const isWayland = Meta.is_wayland_compositor();
 
-    console.log(`=== SETTINGS CHECK ===`);
-    console.log(`skipPreviewX11 (auto-insert): ${skipPreviewX11}`);
-    console.log(`isWayland: ${isWayland}`);
-    console.log(`Should show preview: ${!(!isWayland && skipPreviewX11)}`);
+    logger.debug(`=== SETTINGS CHECK ===`);
+    logger.debug(`postRecordingAction (from recording start): ${postRecordingAction}`);
+    logger.debug(`isWayland: ${isWayland}`);
 
-    // Check if we should show preview or auto-insert
-    const shouldShowPreview = !(!isWayland && skipPreviewX11);
+    // Determine if we should show preview
+    // Show preview for: "preview", or on Wayland for type-based actions
+    const shouldShowPreview =
+      postRecordingAction === "preview" ||
+      (isWayland && (postRecordingAction === "type_only" || postRecordingAction === "type_and_copy"));
 
     if (shouldShowPreview) {
-      console.log("=== PREVIEW MODE ===");
+      // PREVIEW MODE: Extension handles text insertion/copying via preview dialog
+      // User can edit text and explicitly choose to insert or copy
+      logger.debug("=== PREVIEW MODE ===");
+      logger.debug("Extension will handle text insertion/copying via preview dialog");
       if (
         this.recordingDialog &&
         typeof this.recordingDialog.showPreview === "function"
       ) {
-        console.log("Using existing dialog for preview");
+        logger.debug("Using existing dialog for preview");
         this.recordingDialog.showPreview(text);
         this.currentRecordingId = null;
         return { action: "preview", text };
       } else {
-        console.log("No dialog available, need to create preview dialog");
+        logger.debug("No dialog available, need to create preview dialog");
         this.currentRecordingId = null;
         this.updateIcon(false);
         return { action: "createPreview", text };
       }
     } else {
-      console.log("=== AUTO-INSERT MODE ===");
-      console.log("Auto-inserting text (skip preview enabled)");
+      // AUTO-ACTION MODE: Service handles ALL post-processing automatically
+      // Extension should NOT insert/copy - service already did it in Recording._execute_post_processing()
+      // Valid auto-actions: type_only, copy_only, type_and_copy
+      logger.debug(`=== AUTO-ACTION MODE: ${postRecordingAction} ===`);
+      logger.debug("Service handled all text insertion/copying automatically");
       if (this.recordingDialog) {
         this.recordingDialog.close();
         this.recordingDialog = null;
       }
       this.currentRecordingId = null;
       this.updateIcon(false);
-      return { action: "insert", text };
+      // Return "service_handled" to indicate service processed everything, extension does nothing
+      return { action: "service_handled", text };
     }
   }
 
   handleRecordingError(recordingId, errorMessage) {
-    console.log(`=== RECORDING ERROR ===`);
-    console.log(`Recording ID: ${recordingId}`);
-    console.log(`Current Recording ID: ${this.currentRecordingId}`);
-    console.log(`Error: ${errorMessage}`);
-    console.log(`Is cancelled: ${this.isCancelled}`);
+    logger.debug(`=== RECORDING ERROR ===`);
+    logger.debug(`Recording ID: ${recordingId}`);
+    logger.debug(`Current Recording ID: ${this.currentRecordingId}`);
+    logger.debug(`Error: ${errorMessage}`);
+    logger.debug(`Is cancelled: ${this.isCancelled}`);
 
     // If the recording was cancelled, ignore the error
     if (this.isCancelled) {
-      console.log("Recording was cancelled - ignoring error");
+      logger.debug("Recording was cancelled - ignoring error");
       return;
     }
 
@@ -284,7 +300,7 @@ export class RecordingStateManager {
     ) {
       this.recordingDialog.showError(errorMessage);
     } else {
-      console.log("No dialog available for error display");
+      logger.debug("No dialog available for error display");
     }
 
     // Clean up state
@@ -293,7 +309,7 @@ export class RecordingStateManager {
   }
 
   cleanup() {
-    console.log("Cleaning up recording state manager");
+    logger.debug("Cleaning up recording state manager");
 
     // Reset all state
     this.currentRecordingId = null;
@@ -303,10 +319,10 @@ export class RecordingStateManager {
     // Clean up dialog with error handling
     if (this.recordingDialog) {
       try {
-        console.log("Closing recording dialog during cleanup");
+        logger.debug("Closing recording dialog during cleanup");
         this.recordingDialog.close();
       } catch (error) {
-        console.log(
+        logger.debug(
           "Error closing recording dialog during cleanup:",
           error.message
         );
@@ -319,7 +335,7 @@ export class RecordingStateManager {
     try {
       this.updateIcon(false);
     } catch (error) {
-      console.log("Error resetting icon during cleanup:", error.message);
+      logger.debug("Error resetting icon during cleanup:", error.message);
     }
   }
 }

@@ -2,6 +2,9 @@ import Meta from "gi://Meta";
 import St from "gi://St";
 import * as Config from "resource:///org/gnome/shell/misc/config.js";
 import { COLORS, STYLES } from "./constants.js";
+import { Logger } from "./logger.js";
+
+const logger = new Logger("UIUtils");
 
 // Helper function to create button styles
 export function createButtonStyle(baseColor, hoverColor) {
@@ -35,7 +38,7 @@ export function addHandCursorToButton(button) {
 
   // Disable cursor changes on GNOME 48+ Wayland due to crashes
   if (isGNOME48Plus && isWayland) {
-    console.log("Skipping cursor changes on GNOME 48+ Wayland for stability");
+    logger.debug("Skipping cursor changes on GNOME 48+ Wayland for stability");
     return;
   }
 
@@ -52,7 +55,7 @@ export function addHandCursorToButton(button) {
         global.display.set_cursor(Meta.Cursor.POINTING_HAND);
       }
     } catch (error) {
-      console.log("Failed to set pointing hand cursor:", error.message);
+      logger.debug("Failed to set pointing hand cursor:", error.message);
       // Continue without cursor change if it fails
     }
   });
@@ -70,7 +73,7 @@ export function addHandCursorToButton(button) {
         global.display.set_cursor(Meta.Cursor.DEFAULT);
       }
     } catch (error) {
-      console.log("Failed to set default cursor:", error.message);
+      logger.debug("Failed to set default cursor:", error.message);
       // Continue without cursor change if it fails
     }
   });

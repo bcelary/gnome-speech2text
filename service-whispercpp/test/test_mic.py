@@ -122,11 +122,10 @@ def record_and_transcribe(service, duration=5):
         signal_name="RecordingError",
     )
 
-    # Start recording (preview_mode=true means don't type, just transcribe)
+    # Start recording in preview mode (don't auto-type or copy, just transcribe)
     recording_id = service.StartRecording(
         duration,  # duration in seconds
-        False,  # copy_to_clipboard
-        True,  # preview_mode (don't type the text)
+        "preview",  # post_recording_action (just transcribe, no automatic actions)
     )
 
     print_info(f"Recording ID: {recording_id}")

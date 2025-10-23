@@ -1,4 +1,7 @@
 import { DBusManager } from "./dbusManager.js";
+import { Logger } from "./logger.js";
+
+const logger = new Logger("Service");
 
 export class ServiceManager {
   constructor() {
@@ -9,21 +12,21 @@ export class ServiceManager {
   async initialize() {
     // Check if D-Bus manager exists and is initialized
     if (!this.dbusManager) {
-      console.log("D-Bus manager is null, creating new instance");
+      logger.debug("D-Bus manager is null, creating new instance");
       this.dbusManager = new DBusManager();
     }
 
     // Double-check that dbusManager wasn't nullified during creation
     if (!this.dbusManager) {
-      console.log("D-Bus manager became null after creation attempt");
+      logger.debug("D-Bus manager became null after creation attempt");
       return false;
     }
 
     if (!this.dbusManager.isInitialized) {
-      console.log("D-Bus manager not initialized, initializing...");
+      logger.debug("D-Bus manager not initialized, initializing...");
       const initialized = await this.dbusManager.initialize();
       if (!initialized) {
-        console.log("Failed to initialize D-Bus manager");
+        logger.debug("Failed to initialize D-Bus manager");
         return false;
       }
     }
@@ -36,20 +39,20 @@ export class ServiceManager {
     // Ensure D-Bus manager is available and initialized
     const dbusReady = await this.initialize();
     if (!dbusReady || !this.dbusManager) {
-      console.log("D-Bus manager initialization failed or was nullified");
+      logger.debug("D-Bus manager initialization failed or was nullified");
       return false;
     }
 
     // Double-check that dbusManager is still valid (race condition protection)
     if (!this.dbusManager) {
-      console.log("D-Bus manager became null during initialization");
+      logger.debug("D-Bus manager became null during initialization");
       return false;
     }
 
     // Check service status
     const serviceStatus = await this.dbusManager.checkServiceStatus();
     if (!serviceStatus.available) {
-      console.log("Service not available:", serviceStatus.error);
+      logger.debug("Service not available:", serviceStatus.error);
       return false;
     }
 
@@ -58,7 +61,7 @@ export class ServiceManager {
 
   connectSignals(handlers) {
     if (!this.dbusManager) {
-      console.error("D-Bus manager not available for signal connection");
+      logger.error("D-Bus manager not available for signal connection");
       return;
     }
 
@@ -67,25 +70,25 @@ export class ServiceManager {
 
   async typeText(text, copyToClipboard) {
     if (!text || !text.trim()) {
-      console.log("No text to type");
+      logger.debug("No text to type");
       return;
     }
 
     // Ensure D-Bus manager is available
     const dbusReady = await this.initialize();
     if (!dbusReady || !this.dbusManager) {
-      console.error("Failed to ensure D-Bus manager is ready for text typing");
+      logger.error("Failed to ensure D-Bus manager is ready for text typing");
       throw new Error("Failed to connect to service.");
     }
 
-    console.log(`Typing text via D-Bus: "${text}"`);
+    logger.info(`Typing text via D-Bus: "${text}"`);
 
     await this.dbusManager.typeText(text.trim(), copyToClipboard);
   }
 
   async startRecording(settings) {
     if (!this.dbusManager) {
-      console.error("D-Bus manager not available for recording");
+      logger.error("D-Bus manager not available for recording");
       return false;
     }
 
@@ -94,7 +97,7 @@ export class ServiceManager {
 
   async stopRecording() {
     if (!this.dbusManager) {
-      console.error("D-Bus manager not available for stopping recording");
+      logger.error("D-Bus manager not available for stopping recording");
       return false;
     }
 
@@ -103,7 +106,7 @@ export class ServiceManager {
 
   async cancelRecording() {
     if (!this.dbusManager) {
-      console.error("D-Bus manager not available for cancelling recording");
+      logger.error("D-Bus manager not available for cancelling recording");
       return false;
     }
 
@@ -120,11 +123,11 @@ export class ServiceManager {
 
   destroy() {
     if (this.dbusManager) {
-      console.log("Destroying D-Bus manager");
+      logger.debug("Destroying D-Bus manager");
       try {
         this.dbusManager.destroy();
       } catch (error) {
-        console.log("Error destroying D-Bus manager:", error.message);
+        logger.debug("Error destroying D-Bus manager:", error.message);
       } finally {
         this.dbusManager = null;
         this.isInitialized = false;

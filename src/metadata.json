@@ -1,12 +1,11 @@
 {
-  "uuid": "gnome-speech2text@bcelary.github",
-  "name": "GNOME Speech2Text",
-  "description": "Local speech-to-text for GNOME Shell using whisper.cpp. Record audio with a keyboard shortcut, transcribe it locally using Whisper models, and insert the text at your cursor or copy to clipboard. Requires installing a companion D-Bus service (installer included). Forked from kavehtehrani/gnome-speech2text.\n\nThis extension accesses the clipboard to copy transcribed text.",
+  "uuid": "gnome-speech2text-whispercpp@bcelary.github",
+  "name": "Speech2Text with Whisper.cpp",
+  "description": "Local speech-to-text using whisper.cpp. Record audio with a keyboard shortcut and transcribe locally. Requires a companion D-Bus service (installer included).",
   "shell-version": ["46", "47", "48"],
   "url": "https://github.com/bcelary/gnome-speech2text/",
   "author": "Bartek Celary",
-  "version-name": "0.9",
-  "settings-schema": "org.gnome.shell.extensions.speech2text"
+  "version-name": "2.0.0",
+  "gettext-domain": "gnome-speech2text-whispercpp@bcelary.github",
+  "settings-schema": "org.gnome.shell.extensions.speech2text-whispercpp"
 }
-
-

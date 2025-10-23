@@ -6,10 +6,10 @@ extension using whisper.cpp server for local speech recognition.
 Forked from kavehtehrani/gnome-speech2text
 """
 
-__version__ = "0.9"
+__version__ = "2.0.0"
 __author__ = "Bartek Celary"
 __email__ = "bcelary@gmail.com"
 
-from .service import Speech2TextService
+from .service import main
 
-__all__ = ["Speech2TextService"]
+__all__ = ["main"]

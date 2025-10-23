@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+    <schema id="org.gnome.shell.extensions.speech2text-whispercpp" path="/org/gnome/shell/extensions/speech2text-whispercpp/">
+        <key name="toggle-recording" type="as">
+            <default>['&lt;Alt&gt;&lt;Super&gt;space']</default>
+            <summary>Toggle recording</summary>
+            <description>Keyboard shortcut to toggle recording</description>
+        </key>
+        <key name="recording-duration" type="i">
+            <default>60</default>
+            <range min="10" max="300"/>
+            <summary>Recording duration</summary>
+            <description>Maximum recording duration in seconds (10 seconds to 5 minutes)</description>
+        </key>
+        <key name="post-recording-action" type="s">
+            <choices>
+                <choice value="preview"/>
+                <choice value="type_only"/>
+                <choice value="copy_only"/>
+                <choice value="type_and_copy"/>
+            </choices>
+            <default>"preview"</default>
+            <summary>Post-recording action</summary>
+            <description>What to do with transcribed text after recording completes. Options: "preview" (show dialog), "type_only" (auto-type, X11 only), "copy_only" (copy to clipboard), "type_and_copy" (both, X11 only). On Wayland, auto-type options will show preview instead.</description>
+        </key>
+    </schema>
+</schemalist>

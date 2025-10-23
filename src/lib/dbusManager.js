@@ -1,6 +1,9 @@
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import { Logger } from "./logger.js";
+
+const logger = new Logger("DBus");
 
 // D-Bus interface XML for the speech2text service
 const Speech2TextInterface = `
@@ -8,8 +11,7 @@ const Speech2TextInterface = `
   <interface name="org.gnome.Shell.Extensions.Speech2TextWhisperCpp">
     <method name="StartRecording">
       <arg direction="in" type="i" name="duration" />
-      <arg direction="in" type="b" name="copy_to_clipboard" />
-      <arg direction="in" type="b" name="preview_mode" />
+      <arg direction="in" type="s" name="post_recording_action" />
       <arg direction="out" type="s" name="recording_id" />
     </method>
     <method name="StopRecording">
@@ -66,6 +68,14 @@ export class DBusManager {
 
   async initialize() {
     try {
+      // Clean up existing proxy and signals before creating a new one
+      // This prevents duplicate signal connections if initialize() is called multiple times
+      if (this.dbusProxy) {
+        logger.debug("Cleaning up existing D-Bus proxy before reinitializing");
+        this.disconnectSignals();
+        this.dbusProxy = null;
+      }
+
       const Speech2TextProxy =
         Gio.DBusProxy.makeProxyWrapper(Speech2TextInterface);
 
@@ -79,10 +89,10 @@ export class DBusManager {
       try {
         await this.dbusProxy.GetServiceStatusAsync();
         this.isInitialized = true;
-        console.log("D-Bus proxy initialized and service is reachable");
+        logger.info("D-Bus proxy initialized and service is reachable");
         return true;
       } catch (serviceError) {
-        console.log(
+        logger.debug(
           "D-Bus proxy created but service is not reachable:",
           serviceError.message
         );
@@ -90,14 +100,14 @@ export class DBusManager {
         return false;
       }
     } catch (e) {
-      console.error(`Failed to initialize D-Bus proxy: ${e}`);
+      logger.error(`Failed to initialize D-Bus proxy: ${e}`);
       return false;
     }
   }
 
   connectSignals(handlers) {
     if (!this.dbusProxy) {
-      console.error("Cannot connect signals: D-Bus proxy not initialized");
+      logger.error("Cannot connect signals: D-Bus proxy not initialized");
       return false;
     }
 
@@ -109,7 +119,7 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "RecordingStarted",
         (proxy, sender, [recordingId]) => {
-          console.log(`Recording started: ${recordingId}`);
+          logger.debug(`Recording started: ${recordingId}`);
           handlers.onRecordingStarted?.(recordingId);
         }
       )
@@ -119,7 +129,7 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "RecordingStopped",
         (proxy, sender, [recordingId, reason]) => {
-          console.log(`Recording stopped: ${recordingId}, reason: ${reason}`);
+          logger.debug(`Recording stopped: ${recordingId}, reason: ${reason}`);
           handlers.onRecordingStopped?.(recordingId, reason);
         }
       )
@@ -129,7 +139,7 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "TranscriptionReady",
         (proxy, sender, [recordingId, text]) => {
-          console.log(`Transcription ready: ${recordingId}, text: ${text}`);
+          logger.debug(`Transcription ready: ${recordingId}, text: ${text}`);
           handlers.onTranscriptionReady?.(recordingId, text);
         }
       )
@@ -139,7 +149,7 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "RecordingError",
         (proxy, sender, [recordingId, errorMessage]) => {
-          console.log(
+          logger.debug(
             `Recording error: ${recordingId}, error: ${errorMessage}`
           );
           handlers.onRecordingError?.(recordingId, errorMessage);
@@ -161,7 +171,7 @@ export class DBusManager {
       )
     );
 
-    console.log("D-Bus signals connected successfully");
+    logger.info("D-Bus signals connected successfully");
     return true;
   }
 
@@ -171,7 +181,7 @@ export class DBusManager {
         try {
           this.dbusProxy.disconnectSignal(connection);
         } catch (error) {
-          console.log(
+          logger.debug(
             `Signal connection ${connection} was already disconnected or invalid`
           );
         }
@@ -212,7 +222,7 @@ export class DBusManager {
 
       return { available: false, error: "Unknown service status" };
     } catch (e) {
-      console.error(`Error checking service status: ${e}`);
+      logger.error(`Error checking service status: ${e}`);
 
       if (
         e.message &&
@@ -239,7 +249,7 @@ export class DBusManager {
     }
   }
 
-  async startRecording(duration, copyToClipboard, previewMode) {
+  async startRecording(duration, postRecordingAction) {
     const connectionReady = await this.ensureConnection();
     if (!connectionReady || !this.dbusProxy) {
       throw new Error("D-Bus connection not available");
@@ -248,8 +258,7 @@ export class DBusManager {
     try {
       const [recordingId] = await this.dbusProxy.StartRecordingAsync(
         duration,
-        copyToClipboard,
-        previewMode
+        postRecordingAction
       );
       return recordingId;
     } catch (e) {
@@ -312,7 +321,7 @@ export class DBusManager {
     this.lastConnectionCheck = now;
 
     if (!this.dbusProxy || !this.isInitialized) {
-      console.log("D-Bus connection invalid, need to reinitialize");
+      logger.debug("D-Bus connection invalid, need to reinitialize");
       return false;
     }
 
@@ -321,7 +330,7 @@ export class DBusManager {
       await this.dbusProxy.GetServiceStatusAsync();
       return true;
     } catch (e) {
-      console.log("D-Bus connection validation failed:", e.message);
+      logger.debug("D-Bus connection validation failed:", e.message);
       // Connection is stale, need to reinitialize
       this.isInitialized = false;
       this.dbusProxy = null;
@@ -332,12 +341,12 @@ export class DBusManager {
   async ensureConnection() {
     const isValid = await this.validateConnection();
     if (!isValid) {
-      console.log("Reinitializing D-Bus connection...");
+      logger.info("Reinitializing D-Bus connection...");
       const initialized = await this.initialize();
 
       // If initialization failed, try to start the service
       if (!initialized) {
-        console.log("Service not available, attempting to start...");
+        logger.info("Service not available, attempting to start...");
         const serviceStarted = await this._startService();
         if (serviceStarted) {
           return await this.initialize();
@@ -351,7 +360,7 @@ export class DBusManager {
 
   async _startService() {
     try {
-      console.log("Starting Speech2Text service...");
+      logger.info("Starting Speech2Text service...");
 
       // Get the user's home directory
       const homeDir = GLib.get_home_dir();
@@ -360,7 +369,7 @@ export class DBusManager {
       // Check if the service file exists
       const serviceFile = Gio.File.new_for_path(servicePath);
       if (!serviceFile.query_exists(null)) {
-        console.error(`Service file not found: ${servicePath}`);
+        logger.error(`Service file not found: ${servicePath}`);
         return false;
       }
 
@@ -397,18 +406,18 @@ export class DBusManager {
 
         const [status] = testProxy.GetServiceStatusSync();
         if (status.startsWith("ready:")) {
-          console.log("Service started successfully");
+          logger.info("Service started successfully");
           return true;
         } else {
-          console.log(`Service started but not ready: ${status}`);
+          logger.info(`Service started but not ready: ${status}`);
           return false;
         }
       } catch (testError) {
-        console.log("Service not available after start attempt");
+        logger.info("Service not available after start attempt");
         return false;
       }
     } catch (e) {
-      console.error(`Failed to start service: ${e}`);
+      logger.error(`Failed to start service: ${e}`);
       return false;
     }
   }

@@ -1,11 +1,11 @@
 # GNOME Speech2Text Extension - Makefile
 # Automates common installation tasks
 
-EXTENSION_UUID = gnome-speech2text@bcelary.github
+EXTENSION_UUID = gnome-speech2text-whispercpp@bcelary.github
 EXTENSION_DIR = $(HOME)/.local/share/gnome-shell/extensions/$(EXTENSION_UUID)
 SOURCE_DIR = src
 SCHEMAS_DIR = $(EXTENSION_DIR)/schemas
-SCHEMA_ID = org.gnome.shell.extensions.speech2text
+SCHEMA_ID = org.gnome.shell.extensions.speech2text-whispercpp
 
 # Colors for output
 RED = \033[0;31m
@@ -85,10 +85,10 @@ remove-extension:
 		echo "$(BLUE)ℹ️  Extension not installed$(NC)"; \
 	fi
 
-# Reset GSettings to defaults
+# Reset GSettings to defaults (uses dconf for complete reset)
 reset-settings:
 	@echo "$(CYAN)Resetting extension settings...$(NC)"
-	@gsettings reset $(SCHEMA_ID) first-run 2>/dev/null && echo "$(GREEN)✅ Settings reset$(NC)" || echo "$(BLUE)ℹ️  Settings already at defaults$(NC)"
+	@dconf reset -f /org/gnome/shell/extensions/speech2text-whispercpp/ 2>/dev/null && echo "$(GREEN)✅ Settings reset$(NC)" || echo "$(BLUE)ℹ️  Settings already at defaults$(NC)"
 
 # Remove service files and pipx package
 remove-service:

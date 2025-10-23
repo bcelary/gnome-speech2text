@@ -5,7 +5,7 @@ import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/ex
 
 export default class Speech2TextPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
-        const settings = this.getSettings('org.gnome.shell.extensions.speech2text');
+        const settings = this.getSettings('org.gnome.shell.extensions.speech2text-whispercpp');
 
         // Create a preferences page
         const page = new Adw.PreferencesPage({
@@ -73,61 +73,50 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
         durationRow.activatable_widget = durationSpinButton;
         durationGroup.add(durationRow);
 
-        // Clipboard Options Group
-        const clipboardGroup = new Adw.PreferencesGroup({
-            title: 'Clipboard Options',
-            description: 'Configure whether transcribed text should be copied to clipboard',
+        // Post-Recording Action Group
+        const postRecordingGroup = new Adw.PreferencesGroup({
+            title: 'Post-Recording Action',
+            description: 'What to do with transcribed text after recording completes',
         });
-        page.add(clipboardGroup);
+        page.add(postRecordingGroup);
 
-        const clipboardRow = new Adw.ActionRow({
-            title: 'Copy to Clipboard',
-            subtitle: 'Automatically copy transcribed text to clipboard',
-        });
-
-        const clipboardSwitch = new Gtk.Switch({
-            active: settings.get_boolean('copy-to-clipboard'),
-            valign: Gtk.Align.CENTER,
+        const postRecordingRow = new Adw.ComboRow({
+            title: 'Action',
+            subtitle: 'Choose how to handle transcribed text',
         });
 
-        settings.bind(
-            'copy-to-clipboard',
-            clipboardSwitch,
-            'active',
-            Gio.SettingsBindFlags.DEFAULT
-        );
+        // Create string list for the dropdown options
+        const stringList = new Gtk.StringList();
+        stringList.append('Show preview dialog');
+        stringList.append('Auto-type text (X11 only)');
+        stringList.append('Copy to clipboard only');
+        stringList.append('Auto-type and copy (X11 only)');
 
-        clipboardRow.add_suffix(clipboardSwitch);
-        clipboardRow.activatable_widget = clipboardSwitch;
-        clipboardGroup.add(clipboardRow);
+        postRecordingRow.set_model(stringList);
 
-        // Auto-Insert Mode Group (X11 only)
-        const autoInsertGroup = new Adw.PreferencesGroup({
-            title: 'Auto-Insert Mode (X11 Only)',
-            description: 'Skip the preview dialog and insert text immediately after recording',
+        // Map setting values to dropdown indices
+        const actionToIndex = {
+            'preview': 0,
+            'type_only': 1,
+            'copy_only': 2,
+            'type_and_copy': 3,
+        };
+        const indexToAction = ['preview', 'type_only', 'copy_only', 'type_and_copy'];
+
+        // Set initial value
+        const currentAction = settings.get_string('post-recording-action');
+        postRecordingRow.set_selected(actionToIndex[currentAction] || 0);
+
+        // Connect to changes
+        postRecordingRow.connect('notify::selected', (widget) => {
+            const selectedIndex = widget.get_selected();
+            const action = indexToAction[selectedIndex];
+            if (action) {
+                settings.set_string('post-recording-action', action);
+            }
         });
-        page.add(autoInsertGroup);
 
-        const autoInsertRow = new Adw.ActionRow({
-            title: 'Auto-Insert Text',
-            subtitle: 'Automatically insert text without preview (X11 only)',
-        });
-
-        const autoInsertSwitch = new Gtk.Switch({
-            active: settings.get_boolean('skip-preview-x11'),
-            valign: Gtk.Align.CENTER,
-        });
-
-        settings.bind(
-            'skip-preview-x11',
-            autoInsertSwitch,
-            'active',
-            Gio.SettingsBindFlags.DEFAULT
-        );
-
-        autoInsertRow.add_suffix(autoInsertSwitch);
-        autoInsertRow.activatable_widget = autoInsertSwitch;
-        autoInsertGroup.add(autoInsertRow);
+        postRecordingGroup.add(postRecordingRow);
     }
 
     _getShortcutLabel(settings) {

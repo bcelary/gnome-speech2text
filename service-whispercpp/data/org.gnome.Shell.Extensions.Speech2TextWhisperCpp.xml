@@ -5,8 +5,9 @@
     <!-- Methods -->
     <method name="StartRecording">
       <arg direction="in" type="i" name="duration" />
-      <arg direction="in" type="b" name="copy_to_clipboard" />
-      <arg direction="in" type="b" name="preview_mode" />
+      <arg direction="in" type="s" name="post_recording_action">
+        <annotation name="org.gtk.GDBus.DocString" value="One of: preview, type_only, copy_only, type_and_copy" />
+      </arg>
       <arg direction="out" type="s" name="recording_id" />
     </method>
     
