@@ -109,47 +109,59 @@ export class RecordingDialog {
     headerBox.add_child(recordingIcon);
     headerBox.add_child(recordingLabel);
 
-    // Progress bar container (larger and more prominent)
-    this.progressContainer = new St.Widget({
+    // Progress bar background container
+    this.progressBackground = new St.Widget({
       style: `
         background-color: rgba(255, 255, 255, 0.2);
-        border-radius: 15px;
+        border-radius: 4px;
         height: 30px;
-        width: 280px;
-        margin: 15px 0;
+        width: 380px;
       `,
     });
 
-    // Progress bar fill (explicitly positioned to start from left)
+    // Progress bar fill (child of background)
     this.progressBar = new St.Widget({
       style: `
         background-color: ${COLORS.PRIMARY};
-        border-radius: 15px 0px 0px 15px;
+        border-radius: 4px;
         height: 30px;
         width: 0px;
       `,
     });
 
-    // Position the progress bar at the left edge
-    this.progressBar.set_position(0, 0);
+    this.progressBackground.add_child(this.progressBar);
 
-    // Time display overlaid on the progress bar (right side)
+    // Time display label
     this.timeDisplay = new St.Label({
       text: this.formatTimeDisplay(0, this.maxDuration),
       style: `
-        font-size: 14px; 
-        color: white; 
+        font-size: 14px;
+        color: white;
         font-weight: bold;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-        padding: 0 12px;
       `,
     });
 
-    // Position the time display on the right side
-    this.timeDisplay.set_position(280 - 160, 8); // Adjust position for right alignment
+    // Main progress container - stacks background and text using St.Bin
+    this.progressContainer = new St.Widget({
+      style: `
+        width: 380px;
+        height: 30px;
+        margin: 15px 0;
+      `,
+      layout_manager: new Clutter.BinLayout(),
+    });
 
-    this.progressContainer.add_child(this.progressBar);
-    this.progressContainer.add_child(this.timeDisplay);
+    // Text overlay centered on top using St.Bin
+    this.timeDisplayBin = new St.Bin({
+      x_align: Clutter.ActorAlign.CENTER,
+      y_align: Clutter.ActorAlign.CENTER,
+      child: this.timeDisplay,
+    });
+
+    // Add to container - BinLayout stacks them with text on top
+    this.progressContainer.add_child(this.progressBackground);
+    this.progressContainer.add_child(this.timeDisplayBin);
 
     // Instructions
     this.instructionLabel = new St.Label({
@@ -264,9 +276,9 @@ export class RecordingDialog {
       this.formatTimeDisplay(this.elapsedTime, this.maxDuration)
     );
 
-    // Update progress bar (280px is the container width)
+    // Update progress bar (380px is the container width)
     const progress = Math.min(this.elapsedTime / this.maxDuration, 1.0);
-    const progressWidth = Math.floor(280 * progress);
+    const progressWidth = Math.floor(380 * progress);
 
     // Determine color based on progress
     let barColor = COLORS.PRIMARY;
@@ -277,23 +289,22 @@ export class RecordingDialog {
     }
 
     // Update progress bar fill
-    const borderRadius = progress >= 1.0 ? "15px" : "15px 0px 0px 15px";
-
+    // Small border-radius (4px) renders consistently at all widths
     this.progressBar.set_style(`
       background-color: ${barColor};
-      border-radius: ${borderRadius};
+      border-radius: 4px;
       height: 30px;
       width: ${progressWidth}px;
     `);
 
     // Update text style to match the progress bar
     this.timeDisplay.set_style(`
-      font-size: 14px; 
-      color: ${textColor}; 
+      font-size: 14px;
+      color: ${textColor};
       font-weight: bold;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-      padding: 0 12px;
     `);
+    // St.Bin automatically keeps the label centered - no manual positioning needed!
   }
 
   _buildProcessingUI() {
