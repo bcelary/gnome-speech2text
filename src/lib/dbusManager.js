@@ -2,7 +2,7 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { Logger } from "./logger.js";
-import { DBUS_NAME, DBUS_PATH, SERVICE_EXECUTABLE } from "./constants.js";
+import { DBUS_NAME, DBUS_PATH } from "./constants.js";
 
 const logger = new Logger("DBus");
 
@@ -416,7 +416,10 @@ export class DBusManager {
           return false;
         }
       } catch (e) {
-        logger.info("Service not available after D-Bus activation attempt:", e.message);
+        logger.info(
+          "Service not available after D-Bus activation attempt:",
+          e.message
+        );
         return false;
       }
     } catch (e) {

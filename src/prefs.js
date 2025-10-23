@@ -1,7 +1,7 @@
 import Adw from "gi://Adw";
 import Gtk from "gi://Gtk";
 import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
-import { SCHEMA_ID } from "./lib/constants.js";
+import { SCHEMA_ID, RECORDING_DURATION } from "./lib/constants.js";
 
 export default class Speech2TextPreferences extends ExtensionPreferences {
   fillPreferencesWindow(window) {
@@ -42,20 +42,20 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
     // Recording Duration Group
     const durationGroup = new Adw.PreferencesGroup({
       title: "Recording Duration",
-      description: "Maximum recording time (10 seconds to 5 minutes)",
+      description: `Maximum recording time (${this._formatSeconds(RECORDING_DURATION.MIN)} to ${this._formatSeconds(RECORDING_DURATION.MAX)})`,
     });
     page.add(durationGroup);
 
     const durationRow = new Adw.ActionRow({
-      title: "Duration (seconds)",
+      title: "Duration",
       subtitle: "Set how long the recording can last",
     });
 
     const durationAdjustment = new Gtk.Adjustment({
-      lower: 10,
-      upper: 300,
-      step_increment: 10,
-      page_increment: 30,
+      lower: RECORDING_DURATION.MIN,
+      upper: RECORDING_DURATION.MAX,
+      step_increment: RECORDING_DURATION.STEP,
+      page_increment: RECORDING_DURATION.PAGE_STEP,
       value: settings.get_int("recording-duration"),
     });
 
@@ -63,6 +63,13 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
       adjustment: durationAdjustment,
       numeric: true,
       valign: Gtk.Align.CENTER,
+    });
+
+    // Format the display as mm:ss
+    durationSpinButton.connect("output", (spinButton) => {
+      const value = spinButton.get_value_as_int();
+      spinButton.set_text(this._formatSeconds(value));
+      return true;
     });
 
     durationSpinButton.connect("value-changed", (widget) => {
@@ -122,6 +129,12 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
     });
 
     postRecordingGroup.add(postRecordingRow);
+  }
+
+  _formatSeconds(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   }
 
   _getShortcutLabel(settings) {

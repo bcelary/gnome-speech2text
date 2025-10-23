@@ -11,14 +11,16 @@ import threading
 import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from .constants import (
+    MAX_RECORDING_DURATION,
+    MIN_RECORDING_DURATION,
+    WORKER_THREAD_JOIN_TIMEOUT,
+)
 from .dependency_checker import DependencyChecker
 from .post_processor import PostProcessor
 from .recording import Recording
 from .transcriber import Transcriber
 from .types import (
-    MAX_RECORDING_DURATION,
-    MIN_RECORDING_DURATION,
-    WORKER_THREAD_JOIN_TIMEOUT,
     DependencyError,
     PostRecordingAction,
     RecordingConfig,

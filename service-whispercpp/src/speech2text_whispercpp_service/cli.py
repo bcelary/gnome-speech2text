@@ -9,7 +9,8 @@ This is the entry point that gets called when users run
 import argparse
 import sys
 
-from . import SERVICE_EXECUTABLE, __version__
+from . import __version__
+from .constants import SERVICE_EXECUTABLE
 from .service import main as service_main
 
 

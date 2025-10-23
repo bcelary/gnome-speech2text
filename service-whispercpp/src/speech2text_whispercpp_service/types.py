@@ -2,13 +2,14 @@
 """
 Type definitions for GNOME Speech2Text D-Bus Service.
 
-This module provides enums, dataclasses, and constants used throughout the service.
+This module provides enums, dataclasses, and custom exceptions used throughout the service.
+Constants have been moved to constants.py for better organization.
 """
 
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import List, Optional
 
 
 class RecordingState(Enum):
@@ -30,37 +31,6 @@ class PostRecordingAction(Enum):
     TYPE_ONLY = "type_only"  # Auto-type text
     COPY_ONLY = "copy_only"  # Copy to clipboard only
     TYPE_AND_COPY = "type_and_copy"  # Both type and copy
-
-
-# Valid state transitions for the recording state machine
-# Note: FAILED state can be reached from any state (including terminal states)
-# via the special case in Recording._transition_state() for error handling.
-VALID_TRANSITIONS: Dict[RecordingState, Set[RecordingState]] = {
-    RecordingState.STARTING: {
-        RecordingState.RECORDING,
-        RecordingState.CANCELLED,
-        RecordingState.FAILED,
-    },
-    RecordingState.RECORDING: {
-        RecordingState.RECORDED,
-        RecordingState.CANCELLED,
-        RecordingState.FAILED,
-    },
-    RecordingState.RECORDED: {
-        RecordingState.TRANSCRIBING,
-        RecordingState.CANCELLED,  # Allow cancellation before transcription starts
-        RecordingState.FAILED,
-    },
-    RecordingState.TRANSCRIBING: {
-        RecordingState.COMPLETED,
-        RecordingState.CANCELLED,  # Allow cancellation during transcription
-        RecordingState.FAILED,
-    },
-    # Terminal states have no valid transitions
-    RecordingState.COMPLETED: set(),
-    RecordingState.CANCELLED: set(),
-    RecordingState.FAILED: set(),
-}
 
 
 @dataclass(frozen=True)
@@ -99,26 +69,6 @@ class DependencyCheckResult:
     all_ok: bool
     missing_dependencies: List[str]
     error_message: Optional[str] = None
-
-
-# Constants for recording validation
-MIN_AUDIO_FILE_SIZE_BYTES = 100
-AUDIO_VALIDATION_ATTEMPTS = 5
-AUDIO_VALIDATION_RETRY_DELAY = 0.2
-
-# Duration limits
-MIN_RECORDING_DURATION = 1
-MAX_RECORDING_DURATION = 300  # 5 minutes
-
-# Process termination timeouts
-FFMPEG_GRACEFUL_SHUTDOWN_TIMEOUT = 2.0
-FFMPEG_STARTUP_DELAY = 0.1
-FILESYSTEM_FLUSH_DELAY = 0.3
-PROCESS_CLEANUP_DELAY = 0.2
-
-# Thread shutdown
-WORKER_THREAD_JOIN_TIMEOUT = 5.0
-RECORDING_POLL_INTERVAL = 0.1  # For event.wait() timeout
 
 
 class InvalidStateTransitionError(Exception):

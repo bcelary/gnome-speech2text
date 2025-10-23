@@ -18,7 +18,7 @@ from gi.repository import GLib
 
 # Import constants from the service package
 sys.path.insert(0, "../src")
-from speech2text_whispercpp_service import DBUS_NAME, DBUS_PATH
+from speech2text_whispercpp_service.constants import DBUS_NAME, DBUS_PATH
 
 # Colors for terminal output
 GREEN = "\033[92m"

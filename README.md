@@ -3,6 +3,10 @@
 Local speech-to-text for GNOME Shell using [whisper.cpp](https://github.com/ggerganov/whisper.cpp). Record audio with a keyboard shortcut, transcribe locally, and insert text at cursor or copy to clipboard.
 
 ![recording-modal](./images/recording-modal.png)
+> *Real-time recording with audio level indicator and live transcription*
+
+![preview-modal](./images/preview-modal.png)
+> *Preview modal (optional) - review and edit transcription before inserting*
 
 ## Features
 
@@ -68,9 +72,9 @@ Restart GNOME Shell
 
 **Service** (optional - edit `~/.config/environment.d/custom-env.conf`):
 ```bash
-WHISPER_MODEL=small                       # tiny, base, small, medium
-WHISPER_LANGUAGE=auto                     # auto, en, es, fr, de, etc.
-WHISPER_VAD_MODEL=auto                    # auto, none
+WHISPER_MODEL=small     # tiny, base, small, medium
+WHISPER_LANGUAGE=auto   # auto, en, es, fr, de, etc.
+WHISPER_VAD_MODEL=auto  # auto, none
 WHISPER_SERVER_URL=http://localhost:8080
 ```
 
@@ -78,6 +82,9 @@ WHISPER_SERVER_URL=http://localhost:8080
 - Keyboard shortcut
 - Recording duration (10-300 seconds)
 - Post-recording action (preview, auto-type, copy to clipboard)
+
+![prefs](./images/prefs.png)
+> *Extension preferences for customizing behavior and keyboard shortcuts*
 
 ## Usage
 

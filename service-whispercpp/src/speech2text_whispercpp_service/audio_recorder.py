@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from .types import (
+from .constants import (
     AUDIO_VALIDATION_ATTEMPTS,
     AUDIO_VALIDATION_RETRY_DELAY,
     FFMPEG_GRACEFUL_SHUTDOWN_TIMEOUT,
@@ -22,8 +22,8 @@ from .types import (
     FILESYSTEM_FLUSH_DELAY,
     MIN_AUDIO_FILE_SIZE_BYTES,
     PROCESS_CLEANUP_DELAY,
-    AudioFile,
 )
+from .types import AudioFile
 
 
 class AudioRecorder:

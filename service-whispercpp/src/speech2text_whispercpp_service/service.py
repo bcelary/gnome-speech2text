@@ -17,7 +17,7 @@ import dbus.mainloop.glib
 import dbus.service
 from gi.repository import GLib
 
-from . import DBUS_NAME, DBUS_PATH, SERVICE_EXECUTABLE
+from .constants import DBUS_NAME, DBUS_PATH, SERVICE_EXECUTABLE
 from .dependency_checker import DependencyChecker
 from .post_processor import PostProcessor
 from .recording_manager import RecordingManager
@@ -394,13 +394,9 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             elif signal_name == "TextCopied":
                 self.TextCopied(text, success)
             else:
-                syslog.syslog(
-                    syslog.LOG_WARNING, f"Unknown signal name: {signal_name}"
-                )
+                syslog.syslog(syslog.LOG_WARNING, f"Unknown signal name: {signal_name}")
         except Exception as e:
-            syslog.syslog(
-                syslog.LOG_ERR, f"Error emitting {signal_name} signal: {e}"
-            )
+            syslog.syslog(syslog.LOG_ERR, f"Error emitting {signal_name} signal: {e}")
 
 
 def main() -> int:

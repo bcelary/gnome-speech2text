@@ -13,17 +13,46 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from .audio_recorder import AudioRecorder
+from .constants import RECORDING_POLL_INTERVAL
 from .post_processor import PostProcessor
 from .transcriber import Transcriber
 from .types import (
-    RECORDING_POLL_INTERVAL,
-    VALID_TRANSITIONS,
     InvalidStateTransitionError,
     PostRecordingAction,
     RecordingConfig,
     RecordingState,
     TranscriptionCancelledError,
 )
+
+# Valid state transitions for the recording state machine
+# FAILED state can be reached from any state (including terminal states)
+# via the special case in Recording._transition_state() for error handling.
+VALID_TRANSITIONS = {
+    RecordingState.STARTING: {
+        RecordingState.RECORDING,
+        RecordingState.CANCELLED,
+        RecordingState.FAILED,
+    },
+    RecordingState.RECORDING: {
+        RecordingState.RECORDED,
+        RecordingState.CANCELLED,
+        RecordingState.FAILED,
+    },
+    RecordingState.RECORDED: {
+        RecordingState.TRANSCRIBING,
+        RecordingState.CANCELLED,  # Allow cancellation before transcription starts
+        RecordingState.FAILED,
+    },
+    RecordingState.TRANSCRIBING: {
+        RecordingState.COMPLETED,
+        RecordingState.CANCELLED,  # Allow cancellation during transcription
+        RecordingState.FAILED,
+    },
+    # Terminal states have no valid transitions
+    RecordingState.COMPLETED: set(),
+    RecordingState.CANCELLED: set(),
+    RecordingState.FAILED: set(),
+}
 
 
 class Recording:

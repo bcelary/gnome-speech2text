@@ -82,3 +82,13 @@ export const STYLES = {
     y_align: center;
   `,
 };
+
+// Recording duration constraints (in seconds)
+// Note: Service accepts up to 1 hour, but UI enforces more reasonable limits
+export const RECORDING_DURATION = {
+  MIN: 10, // 0:10
+  MAX: 900, // 15:00
+  DEFAULT: 180, // 3:00
+  STEP: 10, // 10 second increments
+  PAGE_STEP: 30, // 30 second page increments
+};
