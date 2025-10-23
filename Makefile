@@ -18,7 +18,8 @@ NC = \033[0m
 .PHONY: help install uninstall clean package status verify-schema \
         copy-files compile-schemas remove-extension reset-settings \
         remove-service install-service install-service-local \
-        upgrade-service install-extension uninstall-extension
+        upgrade-service install-extension uninstall-extension \
+        format-extension fix-extension check
 
 # Default target
 help:
@@ -43,6 +44,11 @@ help:
 	@echo "  install-service-local    - Install service from local source"
 	@echo "  upgrade-service          - Upgrade existing service"
 	@echo "  remove-service           - Remove service completely"
+	@echo ""
+	@echo "$(CYAN)Extension Development:$(NC)"
+	@echo "  format-extension         - Format JavaScript code with Prettier"
+	@echo "  fix-extension            - Lint and auto-fix JavaScript with ESLint"
+	@echo "  check                    - Run all code quality checks and fixes (format + lint)"
 	@echo ""
 	@echo "$(CYAN)Utilities:$(NC)"
 	@echo "  status                   - Show complete installation status (extension + service)"
@@ -202,3 +208,36 @@ clean:
 	fi
 	@cd service-whispercpp && $(MAKE) clean
 	@echo "$(GREEN)✅ Build artifacts cleaned$(NC)"
+
+# ════════════════════════════════════════════════════════════════
+# Extension Development Targets
+# ════════════════════════════════════════════════════════════════
+
+# Check Node.js/npm and install dependencies if needed
+check-node-deps:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "$(RED)❌ npx not found (Node.js required)$(NC)"; \
+		echo ""; \
+		echo "Install Node.js and npm:"; \
+		echo "  sudo apt install nodejs npm"; \
+		echo "Or use nvm: https://github.com/nvm-sh/nvm"; \
+		exit 1; \
+	fi
+	@if [ ! -d "node_modules" ]; then \
+		echo "$(YELLOW)⚠️  Dependencies not installed, running npm install...$(NC)"; \
+		npm install || exit 1; \
+	fi
+
+format-extension: check-node-deps
+	@echo "$(CYAN)═══ Running: Prettier ═══$(NC)"
+	@npx prettier --write '$(SOURCE_DIR)/**/*.js' || exit 1
+	@echo "$(GREEN)✅ Prettier: Extension code formatted$(NC)"
+
+fix-extension: check-node-deps
+	@echo "$(CYAN)═══ Running: ESLint --fix ═══$(NC)"
+	@npx eslint --fix '$(SOURCE_DIR)/**/*.js' || exit 1
+	@echo "$(GREEN)✅ ESLint: Extension code linted and fixed$(NC)"
+
+check: format-extension fix-extension
+	@echo ""
+	@echo "$(GREEN)✅ All extension code quality checks and fixes complete$(NC)"

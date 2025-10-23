@@ -193,7 +193,9 @@ export class RecordingDialog {
             // Preview mode: Copy to clipboard and close
             if (this.textEntry) {
               const finalText = this.textEntry.get_text();
-              logger.debug(`Copying text to clipboard (Enter key): "${finalText}"`);
+              logger.debug(
+                `Copying text to clipboard (Enter key): "${finalText}"`
+              );
               this._copyToClipboard(finalText);
             }
             this.close();
@@ -253,7 +255,7 @@ export class RecordingDialog {
 
     // Determine color based on progress
     let barColor = COLORS.PRIMARY;
-    let textColor = "white";
+    const textColor = "white";
 
     if (progress > 0.8) {
       barColor = progress > 0.95 ? COLORS.DANGER : COLORS.WARNING;
@@ -410,7 +412,7 @@ export class RecordingDialog {
 
     // Add text display for editing
     this.textEntry = new St.Entry({
-      text: text,
+      text,
       style: `
         background-color: rgba(255, 255, 255, 0.1);
         border: 2px solid ${COLORS.SECONDARY};
@@ -798,10 +800,7 @@ export class RecordingDialog {
               modal.destroy();
               logger.debug("Modal destroyed successfully");
             } catch (destroyError) {
-              logger.debug(
-                "Modal destruction failed:",
-                destroyError.message
-              );
+              logger.debug("Modal destruction failed:", destroyError.message);
             }
           }
         } catch (cleanupError) {

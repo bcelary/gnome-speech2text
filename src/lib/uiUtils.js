@@ -81,9 +81,9 @@ export function addHandCursorToButton(button) {
 
 // Helper function to create a button with hover effects
 export function createHoverButton(label, baseColor, hoverColor) {
-  let styles = createButtonStyle(baseColor, hoverColor);
-  let button = new St.Button({
-    label: label,
+  const styles = createButtonStyle(baseColor, hoverColor);
+  const button = new St.Button({
+    label,
     style: styles.normal,
     reactive: true,
     can_focus: true,
@@ -116,7 +116,7 @@ export function createStyledLabel(text, style = "normal", customStyle = "") {
   };
 
   return new St.Label({
-    text: text,
+    text,
     style: `${styles[style] || styles.normal} ${customStyle}`,
   });
 }

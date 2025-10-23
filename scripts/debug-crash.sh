@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Extension naming - update this when extension is renamed
+EXTENSION_UUID="speech2text-whispercpp@bcelary.github"
+
 echo "=== GNOME Shell Crash Post-Mortem Analysis ==="
 echo "System: $(lsb_release -d | cut -f2)"
 echo "GNOME: $(gnome-shell --version)"
@@ -115,13 +118,13 @@ check_extension_details() {
     echo "=== EXTENSION DETAILS ==="
     
     # Check if extension is installed
-    EXT_DIR="$HOME/.local/share/gnome-shell/extensions/gnome-speech2text-whispercpp@bcelary.github"
+    EXT_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
     if [ -d "$EXT_DIR" ]; then
         echo "Extension installed at: $EXT_DIR"
         echo "Extension files:"
         ls -la "$EXT_DIR" | head -10
         echo ""
-        
+
         # Check metadata
         if [ -f "$EXT_DIR/metadata.json" ]; then
             echo "Extension metadata:"
@@ -131,10 +134,10 @@ check_extension_details() {
     else
         echo "Extension not found in user directory"
     fi
-    
+
     # Check extension status
     echo "Extension status:"
-    gnome-extensions show gnome-speech2text-whispercpp@bcelary.github 2>/dev/null || echo "Extension not found/enabled"
+    gnome-extensions show "$EXTENSION_UUID" 2>/dev/null || echo "Extension not found/enabled"
 }
 
 # Generate output filename with timestamp

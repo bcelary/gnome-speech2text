@@ -1,18 +1,30 @@
 /**
- * Naming constants - Single source of truth for extension naming
+ * Naming constants - Single source of truth for extension and service naming
  *
- * When renaming the extension, update these constants and metadata.json
+ * When renaming:
+ * - Extension: Update these constants and metadata.json
+ * - Service: Update these constants and service-whispercpp/src/.../.__init__.py
  */
 
 // Extension identification
-export const EXTENSION_UUID = 'speech2text-whispercpp@bcelary.github';
+export const EXTENSION_UUID = "speech2text-whispercpp@bcelary.github";
 
 // GSettings schema
-export const SCHEMA_ID = 'org.gnome.shell.extensions.speech2text-whispercpp';
+export const SCHEMA_ID = "org.gnome.shell.extensions.speech2text-whispercpp";
 
 // D-Bus service identification (must match service-side constants!)
-export const DBUS_NAME = 'org.gnome.Shell.Extensions.Speech2TextWhisperCpp';
-export const DBUS_PATH = '/org/gnome/Shell/Extensions/Speech2TextWhisperCpp';
+export const DBUS_NAME = "org.gnome.Shell.Extensions.Speech2TextWhisperCpp";
+export const DBUS_PATH = "/org/gnome/Shell/Extensions/Speech2TextWhisperCpp";
+
+// Service package and executable names (must match service-side constants!)
+// These are used in UI messages and service interaction
+export const SERVICE_EXECUTABLE = "speech2text-whispercpp-service";
+export const SETUP_EXECUTABLE = "speech2text-whispercpp-setup";
+
+// Project URLs
+export const GITHUB_REPO_URL = "https://github.com/bcelary/gnome-speech2text";
+export const SERVICE_INSTALL_SCRIPT_URL =
+  "https://raw.githubusercontent.com/bcelary/gnome-speech2text/main/service-whispercpp/install.sh";
 
 // Constants for consistent styling and colors
 export const COLORS = {

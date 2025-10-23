@@ -1,4 +1,3 @@
-import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { RecordingStateManager } from "./recordingStateManager.js";
 import { RecordingDialog } from "./recordingDialog.js";
 import { Logger } from "./logger.js";
@@ -145,7 +144,9 @@ export class RecordingController {
     if (result && result.action === "service_handled") {
       // Service already handled all post-processing (type_only, copy_only, type_and_copy)
       // Extension should NOT insert or copy - service did it automatically
-      logger.debug("Service handled post-processing automatically - no action needed from extension");
+      logger.debug(
+        "Service handled post-processing automatically - no action needed from extension"
+      );
     } else if (result && result.action === "preview") {
       // Preview mode - dialog is already showing, user will manually insert/copy
       logger.debug("Preview mode - user will manually insert/copy via dialog");

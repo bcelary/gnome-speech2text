@@ -16,7 +16,7 @@ export class KeybindingManager {
     Main.wm.removeKeybinding("toggle-recording");
 
     // Get shortcut from settings
-    let shortcuts = this.extensionCore.settings.get_strv("toggle-recording");
+    const shortcuts = this.extensionCore.settings.get_strv("toggle-recording");
     if (shortcuts.length > 0) {
       this.currentKeybinding = shortcuts[0];
     } else {

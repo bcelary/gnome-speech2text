@@ -7,7 +7,6 @@ import { Logger } from "./lib/logger.js";
 import { SCHEMA_ID } from "./lib/constants.js";
 
 const logger = new Logger("Extension");
-let extensionInstance = null;
 
 export default class Speech2TextExtension extends Extension {
   constructor(metadata) {
@@ -41,7 +40,6 @@ export default class Speech2TextExtension extends Extension {
 
     this._setupSignalHandlers();
 
-    extensionInstance = this;
     logger.info("Extension enabled successfully");
   }
 
@@ -129,7 +127,6 @@ export default class Speech2TextExtension extends Extension {
       }
 
       if (this.settings && this.uiManager) {
-        extensionInstance = this;
         this._setupSignalHandlers();
       }
     } catch (recoveryError) {
@@ -144,8 +141,6 @@ export default class Speech2TextExtension extends Extension {
 
   disable() {
     logger.info("Disabling Speech2Text extension (D-Bus version)");
-
-    extensionInstance = null;
 
     // Clean up components in reverse order of initialization
     if (this.keybindingManager) {

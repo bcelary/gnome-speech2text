@@ -3,7 +3,7 @@
 Command-line interface for the GNOME Speech2Text Service (whisper.cpp Backend).
 
 This is the entry point that gets called when users run
-'gnome-speech2text-service-whispercpp'.
+'speech2text-whispercpp-service'.
 """
 
 import argparse

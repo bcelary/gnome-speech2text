@@ -17,7 +17,7 @@ import dbus.mainloop.glib
 import dbus.service
 from gi.repository import GLib
 
-from . import DBUS_NAME, DBUS_PATH
+from . import DBUS_NAME, DBUS_PATH, SERVICE_EXECUTABLE
 from .dependency_checker import DependencyChecker
 from .post_processor import PostProcessor
 from .recording_manager import RecordingManager
@@ -79,9 +79,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
         )
 
         # Initialize syslog
-        syslog.openlog(
-            "gnome-speech2text-service-whispercpp", syslog.LOG_PID, syslog.LOG_USER
-        )
+        syslog.openlog(SERVICE_EXECUTABLE, syslog.LOG_PID, syslog.LOG_USER)
         syslog.syslog(
             syslog.LOG_INFO, "Speech2Text D-Bus service started (whisper.cpp backend)"
         )
@@ -165,7 +163,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
 
     # D-Bus Methods
     @dbus.service.method(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+        DBUS_NAME,
         in_signature="is",
         out_signature="s",
     )
@@ -212,7 +210,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             raise dbus.exceptions.DBusException(error_msg) from e
 
     @dbus.service.method(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+        DBUS_NAME,
         in_signature="s",
         out_signature="b",
     )
@@ -232,7 +230,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             return False
 
     @dbus.service.method(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+        DBUS_NAME,
         in_signature="s",
         out_signature="b",
     )
@@ -252,7 +250,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             return False
 
     @dbus.service.method(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+        DBUS_NAME,
         in_signature="sb",
         out_signature="b",
     )
@@ -286,9 +284,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             self.TextTyped(text, False)
             return False
 
-    @dbus.service.method(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp", out_signature="s"
-    )
+    @dbus.service.method(DBUS_NAME, out_signature="s")  # type: ignore
     def GetServiceStatus(  # noqa: N802
         self,
     ) -> str:
@@ -302,9 +298,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
         except Exception as e:
             return f"error:{str(e)}"
 
-    @dbus.service.method(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp", out_signature="bas"
-    )
+    @dbus.service.method(DBUS_NAME, out_signature="bas")  # type: ignore
     def CheckDependencies(  # noqa: N802
         self,
     ) -> Tuple[bool, List[str]]:
@@ -319,39 +313,29 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             return False, [f"Error checking dependencies: {str(e)}"]
 
     # D-Bus Signals
-    @dbus.service.signal(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp", signature="s"
-    )
+    @dbus.service.signal(DBUS_NAME, signature="s")  # type: ignore
     def RecordingStarted(self, recording_id: str) -> None:  # noqa: N802
         """Signal emitted when recording starts."""
         pass
 
-    @dbus.service.signal(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp", signature="ss"
-    )
+    @dbus.service.signal(DBUS_NAME, signature="ss")  # type: ignore
     def RecordingStopped(self, recording_id: str, reason: str) -> None:  # noqa: N802
         """Signal emitted when recording stops."""
         pass
 
-    @dbus.service.signal(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp", signature="ss"
-    )
+    @dbus.service.signal(DBUS_NAME, signature="ss")  # type: ignore
     def TranscriptionReady(self, recording_id: str, text: str) -> None:  # noqa: N802
         """Signal emitted when transcription is ready."""
         pass
 
-    @dbus.service.signal(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp", signature="ss"
-    )
+    @dbus.service.signal(DBUS_NAME, signature="ss")  # type: ignore
     def RecordingError(  # noqa: N802
         self, recording_id: str, error_message: str
     ) -> None:
         """Signal emitted when an error occurs."""
         pass
 
-    @dbus.service.signal(  # type: ignore
-        "org.gnome.Shell.Extensions.Speech2TextWhisperCpp", signature="sb"
-    )
+    @dbus.service.signal(DBUS_NAME, signature="sb")  # type: ignore
     def TextTyped(self, text: str, success: bool) -> None:  # noqa: N802
         """Signal emitted when text is typed."""
         pass

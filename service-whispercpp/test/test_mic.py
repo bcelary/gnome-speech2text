@@ -16,6 +16,10 @@ import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
 
+# Import constants from the service package
+sys.path.insert(0, "../src")
+from gnome_speech2text_service_whispercpp import DBUS_NAME, DBUS_PATH
+
 # Colors for terminal output
 GREEN = "\033[92m"
 RED = "\033[91m"
@@ -49,8 +53,8 @@ def check_service():
         # Use the main loop that was set up at the start
         bus = dbus.SessionBus()
         service = bus.get_object(
-            "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
-            "/org/gnome/Shell/Extensions/Speech2TextWhisperCpp",
+            DBUS_NAME,
+            DBUS_PATH,
         )
 
         status = service.GetServiceStatus()
@@ -60,7 +64,7 @@ def check_service():
     except dbus.exceptions.DBusException as e:
         print_error("Service is not running!")
         print_error(f"Error: {e}")
-        print_info("Start the service with: gnome-speech2text-service-whispercpp")
+        print_info("Start the service with: speech2text-whispercpp-service")
         sys.exit(1)
 
 
@@ -113,12 +117,12 @@ def record_and_transcribe(service, duration=5):
     bus = dbus.SessionBus()
     bus.add_signal_receiver(
         on_transcription_ready,
-        dbus_interface="org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+        dbus_interface=DBUS_NAME,
         signal_name="TranscriptionReady",
     )
     bus.add_signal_receiver(
         on_recording_error,
-        dbus_interface="org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+        dbus_interface=DBUS_NAME,
         signal_name="RecordingError",
     )
 

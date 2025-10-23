@@ -2,7 +2,7 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { Logger } from "./logger.js";
-import { DBUS_NAME, DBUS_PATH } from "./constants.js";
+import { DBUS_NAME, DBUS_PATH, SERVICE_EXECUTABLE } from "./constants.js";
 
 const logger = new Logger("DBus");
 
@@ -181,7 +181,7 @@ export class DBusManager {
       if (this.dbusProxy && connection) {
         try {
           this.dbusProxy.disconnectSignal(connection);
-        } catch (error) {
+        } catch {
           logger.debug(
             `Signal connection ${connection} was already disconnected or invalid`
           );
@@ -365,7 +365,9 @@ export class DBusManager {
 
       // Get the user's home directory
       const homeDir = GLib.get_home_dir();
-      const servicePath = `${homeDir}/.local/share/gnome-speech2text-service-whispercpp/gnome-speech2text-service-whispercpp`;
+      // Note: This checks for old-style installation. Modern installations via pipx
+      // don't use this path, but we keep it for backwards compatibility.
+      const servicePath = `${homeDir}/.local/share/${SERVICE_EXECUTABLE}/${SERVICE_EXECUTABLE}`;
 
       // Check if the service file exists
       const serviceFile = Gio.File.new_for_path(servicePath);
@@ -374,11 +376,8 @@ export class DBusManager {
         return false;
       }
 
-      // Start the service
-      const subprocess = Gio.Subprocess.new(
-        [servicePath],
-        Gio.SubprocessFlags.NONE
-      );
+      // Start the service (fire-and-forget)
+      Gio.Subprocess.new([servicePath], Gio.SubprocessFlags.NONE);
 
       // Wait for service to start and register with D-Bus
       await new Promise((resolve) => {
@@ -399,9 +398,9 @@ export class DBusManager {
           Gio.DBus.session,
           Gio.DBusProxyFlags.NONE,
           null,
-          "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
-          "/org/gnome/Shell/Extensions/Speech2TextWhisperCpp",
-          "org.gnome.Shell.Extensions.Speech2TextWhisperCpp",
+          DBUS_NAME,
+          DBUS_PATH,
+          DBUS_NAME,
           null
         );
 
@@ -413,7 +412,7 @@ export class DBusManager {
           logger.info(`Service started but not ready: ${status}`);
           return false;
         }
-      } catch (testError) {
+      } catch {
         logger.info("Service not available after start attempt");
         return false;
       }

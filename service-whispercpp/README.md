@@ -74,7 +74,7 @@ If you already have pipx installed and prefer manual control:
 pipx install --system-site-packages 'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service-whispercpp'
 
 # Run setup to configure D-Bus
-gnome-speech2text-whispercpp-setup
+speech2text-whispercpp-setup
 ```
 
 **Option 3: Install from local source**:
@@ -106,7 +106,7 @@ uv venv --system-site-packages
 uv sync --group dev
 
 # Register service with D-Bus
-.venv/bin/gnome-speech2text-whispercpp-setup
+.venv/bin/speech2text-whispercpp-setup
 ```
 
 **Development workflow:**
@@ -116,11 +116,11 @@ uv sync --group dev
 # Changes are immediately active - just restart the service to test
 
 # To restart the service:
-pkill -f gnome-speech2text-service-whispercpp
+pkill -f speech2text-whispercpp-service
 
 # The service will auto-start when the extension calls it
 # Or manually start it for debugging:
-.venv/bin/gnome-speech2text-service-whispercpp
+.venv/bin/speech2text-whispercpp-service
 
 # View service logs
 journalctl -f | grep -E 'gnome-speech2text|whispercpp'
@@ -261,7 +261,7 @@ dbus-send --session --dest=org.gnome.Shell.Extensions.Speech2TextWhisperCpp \
   org.gnome.Shell.Extensions.Speech2TextWhisperCpp.GetServiceStatus
 
 # Manually start for debugging
-gnome-speech2text-service-whispercpp
+speech2text-whispercpp-service
 ```
 
 ## D-Bus Interface
@@ -356,10 +356,10 @@ To completely remove the service:
 
 ```bash
 # Step 1: Clean up service files (D-Bus, desktop entries, etc.)
-gnome-speech2text-whispercpp-uninstall
+speech2text-whispercpp-uninstall
 
 # Step 2: Uninstall the pipx package
-pipx uninstall gnome-speech2text-service-whispercpp
+pipx uninstall speech2text-whispercpp-service
 ```
 
 The uninstall command will:

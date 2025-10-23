@@ -42,10 +42,17 @@ export class RecordingStateManager {
 
       // On Wayland, fallback to preview mode for auto-type actions
       let effectiveAction = postRecordingAction;
-      if (isWayland && (postRecordingAction === "type_only" || postRecordingAction === "type_and_copy")) {
-        logger.debug(`Wayland detected: falling back from ${postRecordingAction} to preview mode`);
+      if (
+        isWayland &&
+        (postRecordingAction === "type_only" ||
+          postRecordingAction === "type_and_copy")
+      ) {
+        logger.debug(
+          `Wayland detected: falling back from ${postRecordingAction} to preview mode`
+        );
         // For Wayland, convert type-based actions to copy_only if they had copy, otherwise preview
-        effectiveAction = postRecordingAction === "type_and_copy" ? "copy_only" : "preview";
+        effectiveAction =
+          postRecordingAction === "type_and_copy" ? "copy_only" : "preview";
       }
 
       logger.debug(
@@ -231,24 +238,32 @@ export class RecordingStateManager {
 
     // Use the post-recording action that was set when recording STARTED
     // (not the current setting, in case user changed it mid-recording)
-    const postRecordingAction = this.lastRecordingSettings?.postRecordingAction || "preview";
+    const postRecordingAction =
+      this.lastRecordingSettings?.postRecordingAction ||
+      settings.get_string("post-recording-action");
     const isWayland = Meta.is_wayland_compositor();
 
     logger.debug(`=== SETTINGS CHECK ===`);
-    logger.debug(`postRecordingAction (from recording start): ${postRecordingAction}`);
+    logger.debug(
+      `postRecordingAction (from recording start): ${postRecordingAction}`
+    );
     logger.debug(`isWayland: ${isWayland}`);
 
     // Determine if we should show preview
     // Show preview for: "preview", or on Wayland for type-based actions
     const shouldShowPreview =
       postRecordingAction === "preview" ||
-      (isWayland && (postRecordingAction === "type_only" || postRecordingAction === "type_and_copy"));
+      (isWayland &&
+        (postRecordingAction === "type_only" ||
+          postRecordingAction === "type_and_copy"));
 
     if (shouldShowPreview) {
       // PREVIEW MODE: Extension handles text insertion/copying via preview dialog
       // User can edit text and explicitly choose to insert or copy
       logger.debug("=== PREVIEW MODE ===");
-      logger.debug("Extension will handle text insertion/copying via preview dialog");
+      logger.debug(
+        "Extension will handle text insertion/copying via preview dialog"
+      );
       if (
         this.recordingDialog &&
         typeof this.recordingDialog.showPreview === "function"

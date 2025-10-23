@@ -4,6 +4,7 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 import { Logger } from "./logger.js";
+import { GITHUB_REPO_URL, SERVICE_INSTALL_SCRIPT_URL } from "./constants.js";
 
 const logger = new Logger("UI");
 
@@ -19,7 +20,7 @@ export class UIManager {
     this.icon = new PanelMenu.Button(0.0, "Speech2Text Indicator");
 
     // Set up the icon
-    let icon = new St.Icon({
+    const icon = new St.Icon({
       icon_name: "radio-checked-symbolic",
       style_class: "system-status-icon",
     });
@@ -37,7 +38,7 @@ export class UIManager {
 
   createPopupMenu() {
     // Settings menu item - opens standard GNOME extension preferences
-    let settingsItem = new PopupMenu.PopupMenuItem("Settings");
+    const settingsItem = new PopupMenu.PopupMenuItem("Settings");
     settingsItem.connect("activate", () => {
       this.openPreferences();
     });
@@ -47,24 +48,27 @@ export class UIManager {
   _setupClickHandler() {
     // Store reference to 'this' to avoid context issues in callback
     const self = this;
-    this._buttonPressSignalId = this.icon.connect("button-press-event", (_actor, event) => {
-      const buttonPressed = event.get_button();
+    this._buttonPressSignalId = this.icon.connect(
+      "button-press-event",
+      (_actor, event) => {
+        const buttonPressed = event.get_button();
 
-      if (buttonPressed === 1) {
-        // Left click - toggle recording
-        self.icon.menu.close(true);
-        logger.debug("Click handler triggered");
+        if (buttonPressed === 1) {
+          // Left click - toggle recording
+          self.icon.menu.close(true);
+          logger.debug("Click handler triggered");
 
-        // Use direct reference to this extension instance
-        self.extensionCore.toggleRecording();
+          // Use direct reference to this extension instance
+          self.extensionCore.toggleRecording();
+          return Clutter.EVENT_STOP;
+        } else if (buttonPressed === 3) {
+          // Right click - show menu
+          return Clutter.EVENT_PROPAGATE;
+        }
+
         return Clutter.EVENT_STOP;
-      } else if (buttonPressed === 3) {
-        // Right click - show menu
-        return Clutter.EVENT_PROPAGATE;
       }
-
-      return Clutter.EVENT_STOP;
-    });
+    );
   }
 
   _addToPanel() {
@@ -98,14 +102,12 @@ export class UIManager {
 
   showServiceMissingNotification(errorMessage) {
     const title = "WhisperCpp Service Not Installed";
-    const message = (errorMessage || "Service not found") + "\n\n" +
-      "Quick install (2 commands):\n" +
-      "  pipx install gnome-speech2text-service-whispercpp\n" +
-      "  gnome-speech2text-whispercpp-setup\n\n" +
-      "Or use one-liner:\n" +
-      "  curl -fsSL https://raw.githubusercontent.com/kavehtehrani/gnome-speech2text/main/service-whispercpp/install.sh | bash\n\n" +
-      "Documentation:\n" +
-      "  github.com/kavehtehrani/gnome-speech2text#installation";
+    const message =
+      `${errorMessage || "Service not found"}\n\n` +
+      `Install using the quick installer:\n` +
+      `  curl -fsSL ${SERVICE_INSTALL_SCRIPT_URL} | bash\n\n` +
+      `Documentation:\n` +
+      `  ${GITHUB_REPO_URL}`;
 
     Main.notify(title, message);
   }
@@ -138,7 +140,7 @@ export class UIManager {
       this.icon = null;
       try {
         delete Main.panel.statusArea["speech2text-indicator"];
-      } catch (e) {
+      } catch {
         // Ignore secondary cleanup errors
       }
     }

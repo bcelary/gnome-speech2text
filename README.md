@@ -59,7 +59,7 @@ If you installed the extension from extensions.gnome.org:
 ```bash
 pipx install --system-site-packages \
   'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service-whispercpp'
-gnome-speech2text-whispercpp-setup
+speech2text-whispercpp-setup
 ```
 
 Restart GNOME Shell
@@ -91,13 +91,13 @@ WHISPER_SERVER_URL=http://localhost:8080
 **Check installation:**
 ```bash
 make status
-gnome-extensions enable gnome-speech2text-whispercpp@bcelary.github
+gnome-extensions enable speech2text-whispercpp@bcelary.github
 ```
 
 **View logs:**
 ```bash
 ./scripts/tail-logs.sh              # Filters extension's logs
-journalctl -f -t gnome-speech2text-service-whispercpp  # Service logs
+journalctl -f -t speech2text-whispercpp-service  # Service logs
 ```
 
 **Note:** Text insertion requires X11. On Wayland, use clipboard mode.

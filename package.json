@@ -1,0 +1,26 @@
+{
+  "name": "gnome-speech2text-extension",
+  "version": "1.0.0",
+  "description": "GNOME Shell extension for speech-to-text using whisper.cpp",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write 'src/**/*.js'",
+    "lint": "eslint 'src/**/*.js'",
+    "lint:fix": "eslint --fix 'src/**/*.js'",
+    "check": "npm run format && npm run lint:fix"
+  },
+  "devDependencies": {
+    "eslint": "^9.38.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2"
+  },
+  "keywords": [
+    "gnome-shell",
+    "extension",
+    "speech-to-text",
+    "whisper"
+  ],
+  "author": "bcelary",
+  "license": "MIT"
+}
