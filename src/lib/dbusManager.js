@@ -363,11 +363,11 @@ export class DBusManager {
       logger.info("Reinitializing D-Bus connection...");
       const initialized = await this.initialize();
 
-      // If initialization failed, try to start the service
+      // If initialization failed, try to activate the service via D-Bus
       if (!initialized) {
-        logger.info("Service not available, attempting to start...");
-        const serviceStarted = await this._startService();
-        if (serviceStarted) {
+        logger.info("Service not available, triggering D-Bus activation...");
+        const serviceActivated = await this._activateService();
+        if (serviceActivated) {
           return await this.initialize();
         }
       }
@@ -377,27 +377,12 @@ export class DBusManager {
     return true;
   }
 
-  async _startService() {
+  async _activateService() {
     try {
-      logger.info("Starting Speech2Text service...");
+      logger.info("Activating Speech2Text service via D-Bus...");
 
-      // Get the user's home directory
-      const homeDir = GLib.get_home_dir();
-      // Note: This checks for old-style installation. Modern installations via pipx
-      // don't use this path, but we keep it for backwards compatibility.
-      const servicePath = `${homeDir}/.local/share/${SERVICE_EXECUTABLE}/${SERVICE_EXECUTABLE}`;
-
-      // Check if the service file exists
-      const serviceFile = Gio.File.new_for_path(servicePath);
-      if (!serviceFile.query_exists(null)) {
-        logger.error(`Service file not found: ${servicePath}`);
-        return false;
-      }
-
-      // Start the service (fire-and-forget)
-      Gio.Subprocess.new([servicePath], Gio.SubprocessFlags.NONE);
-
-      // Wait for service to start and register with D-Bus
+      // D-Bus will automatically start the service when we try to connect to it
+      // We just need to wait a bit for the service to register
       await new Promise((resolve) => {
         this.serviceStartTimeoutId = GLib.timeout_add(
           GLib.PRIORITY_DEFAULT,
@@ -410,7 +395,7 @@ export class DBusManager {
         );
       });
 
-      // Verify service is available
+      // Verify service is now available
       try {
         const testProxy = Gio.DBusProxy.new_sync(
           Gio.DBus.session,
@@ -424,18 +409,18 @@ export class DBusManager {
 
         const [status] = testProxy.GetServiceStatusSync();
         if (status.startsWith("ready:")) {
-          logger.info("Service started successfully");
+          logger.info("Service activated successfully via D-Bus");
           return true;
         } else {
-          logger.info(`Service started but not ready: ${status}`);
+          logger.info(`Service activated but not ready: ${status}`);
           return false;
         }
-      } catch {
-        logger.info("Service not available after start attempt");
+      } catch (e) {
+        logger.info("Service not available after D-Bus activation attempt:", e.message);
         return false;
       }
     } catch (e) {
-      logger.error(`Failed to start service: ${e}`);
+      logger.error(`Failed to activate service: ${e}`);
       return false;
     }
   }

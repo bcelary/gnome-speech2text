@@ -53,94 +53,52 @@ sudo pacman -S python-dbus python-gobject ffmpeg wl-clipboard xdotool xclip
 
 ### For Users
 
-**Option 1: Quick curl install** (easiest):
+**Option 1: Install from GitHub** (recommended):
 
 ```bash
-# One-line install from GitHub
-curl -fsSL https://raw.githubusercontent.com/bcelary/gnome-speech2text/main/service-whispercpp/install.sh | bash
-```
-
-This will:
-- Check and install pipx if needed
-- Install the service directly from GitHub
-- Set up D-Bus integration automatically
-
-**Option 2: Pipx install from GitHub**:
-
-If you already have pipx installed and prefer manual control:
-
-```bash
-# Install directly from GitHub
+# Install directly from GitHub using pipx
 pipx install --system-site-packages 'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service-whispercpp'
 
 # Run setup to configure D-Bus
 speech2text-whispercpp-setup
 ```
 
-**Option 3: Install from local source**:
-
-For developers who want to test local changes:
+**Option 2: Install using Makefile**:
 
 ```bash
 # Clone the repository
 git clone https://github.com/bcelary/gnome-speech2text.git
 cd gnome-speech2text/service-whispercpp
 
-# Install from local directory
-./install.sh --from-source
+# Install from GitHub (will do more checks but result same as Option 1)
+make install
+
+# Or install from local source (for testing local changes)
+make install-local
 ```
 
 ### For Development
 
-Use `uv` for managing the environment and dependencies in editable mode.
-
-**Prerequisites:** Install system packages from the [Prerequisites](#prerequisites) section above.
-
 **Setup:**
 
 ```bash
-# Create venv with system site packages (for python3-dbus and python3-gi)
-uv venv --system-site-packages
+# Install system packages first (see Prerequisites section above)
 
-# Install package in editable mode + all dependencies (runtime + dev)
-uv sync --group dev
-
-# Register service with D-Bus
-.venv/bin/speech2text-whispercpp-setup
+# Setup development environment
+make dev
 ```
 
 **Development workflow:**
 
 ```bash
-# Make changes to code in src/
-# Changes are immediately active - just restart the service to test
+# Run all code quality checks and fixes
+make check
 
-# To restart the service:
-pkill -f speech2text-whispercpp-service
-
-# The service will auto-start when the extension calls it
-# Or manually start it for debugging:
-.venv/bin/speech2text-whispercpp-service
+# Restart service to test changes
+make kill-service  # Service will auto-start on next D-Bus call
 
 # View service logs
 journalctl -f | grep -E 'gnome-speech2text|whispercpp'
-```
-
-**Code quality tools:**
-
-```bash
-# Format code
-uv run black .
-
-# Lint code
-uv run ruff check .
-uv run ruff check --fix .  # Auto-fix issues
-
-# Type check
-uv run mypy .
-
-# Run all checks (with auto-fix)
-uv run black src && uv run ruff check --fix src && uv run mypy src
 ```
 
 ## Configuration
