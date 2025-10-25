@@ -229,7 +229,7 @@ export class UICoordinator {
    * @private
    */
   _isSilentMode() {
-    return this.settings?.get_string("processing-ui-mode") === "silent";
+    return this.settings?.get_string("progress-display") === "silent";
   }
 
   /**
@@ -352,15 +352,10 @@ export class UICoordinator {
    * @private
    */
   _render() {
-    const recordingUiMode =
-      this.settings?.get_string("recording-ui-mode") || "modal";
-    const processingUiMode =
-      this.settings?.get_string("processing-ui-mode") || "modal";
+    const progressDisplay =
+      this.settings?.get_string("progress-display") || "normal";
 
-    logger.debug(`Rendering state: ${this.currentState}`);
-    logger.debug(
-      `Recording UI: ${recordingUiMode}, Processing UI: ${processingUiMode}`
-    );
+    logger.debug(`Rendering state: ${this.currentState}, progress: ${progressDisplay}`);
 
     switch (this.currentState) {
       case State.IDLE:
@@ -368,11 +363,11 @@ export class UICoordinator {
         break;
 
       case State.RECORDING:
-        this._renderRecording(recordingUiMode);
+        this._renderRecording(progressDisplay);
         break;
 
       case State.PROCESSING:
-        this._renderProcessing(processingUiMode);
+        this._renderProcessing(progressDisplay);
         break;
 
       case State.PREVIEW:
@@ -406,15 +401,15 @@ export class UICoordinator {
    * Render RECORDING state
    * @private
    */
-  _renderRecording(recordingUiMode) {
+  _renderRecording(progressDisplay) {
     // Panel: ALWAYS show (red icon + timer)
     this.panelIndicator.showRecording(
       this.recordingStartTime,
       this.maxDuration
     );
 
-    // Modal: optional based on settings
-    if (recordingUiMode === "modal") {
+    // Modal: only show if "always" mode
+    if (progressDisplay === "always") {
       // Update content FIRST (containers pre-built, just toggle + update)
       const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
       const remaining = Math.max(0, this.maxDuration - elapsed);
@@ -440,7 +435,7 @@ export class UICoordinator {
       // Start timer to update modal
       this._startRecordingTimer();
     } else {
-      // Panel mode: don't show modal during recording
+      // Panel mode (normal/silent): don't show modal during recording
       if (this.modalDialog.isOpen()) {
         this.modalDialog.close();
       }
@@ -451,35 +446,41 @@ export class UICoordinator {
    * Render PROCESSING state
    * @private
    */
-  _renderProcessing(processingUiMode) {
+  _renderProcessing(progressDisplay) {
     // Panel: ALWAYS show (spinner icon)
     this.panelIndicator.showProcessing();
 
     // Stop recording timer
     this._stopRecordingTimer();
 
-    // Modal/Toast: based on settings
-    if (processingUiMode === "modal") {
-      // Build processing content FIRST
-      this.modalDialog.showProcessing();
+    // Modal/Toast/Silent: based on progress display setting
+    switch (progressDisplay) {
+      case "always":
+        // Build processing content FIRST
+        this.modalDialog.showProcessing();
 
-      // THEN open modal with content ready
-      if (!this.modalDialog.isOpen()) {
-        this.modalDialog.open();
-      }
-    } else if (processingUiMode === "toast") {
-      // Close modal if open
-      if (this.modalDialog.isOpen()) {
-        this.modalDialog.close();
-      }
+        // THEN open modal with content ready
+        if (!this.modalDialog.isOpen()) {
+          this.modalDialog.open();
+        }
+        break;
 
-      // Show toast
-      ToastNotification.showProcessing();
-    } else {
-      // Panel or silent mode: just panel indicator, no modal/toast
-      if (this.modalDialog.isOpen()) {
-        this.modalDialog.close();
-      }
+      case "normal":
+        // Close modal if open
+        if (this.modalDialog.isOpen()) {
+          this.modalDialog.close();
+        }
+
+        // Show toast
+        ToastNotification.showProcessing();
+        break;
+
+      case "silent":
+        // Just panel indicator, no modal/toast
+        if (this.modalDialog.isOpen()) {
+          this.modalDialog.close();
+        }
+        break;
     }
   }
 

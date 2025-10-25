@@ -21,52 +21,39 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
     });
     page.add(uiGroup);
 
-    // Unified Notification Style
-    const notificationStyleRow = new Adw.ComboRow({
+    // Progress Display
+    const progressDisplayRow = new Adw.ComboRow({
       title: "Progress Display",
       subtitle: "How to show recording and transcription progress",
     });
 
-    const notificationStyleList = new Gtk.StringList();
-    notificationStyleList.append("Always (blocks screen)");
-    notificationStyleList.append("Normal (brief messages)");
-    notificationStyleList.append("Errors only");
-    notificationStyleRow.set_model(notificationStyleList);
+    const progressDisplayList = new Gtk.StringList();
+    progressDisplayList.append("Always (blocks screen)");
+    progressDisplayList.append("Normal (brief messages)");
+    progressDisplayList.append("Errors only");
+    progressDisplayRow.set_model(progressDisplayList);
 
-    // Determine current unified mode based on existing settings
-    // Dialog = both modal, Notification = panel/toast, Silent = panel/silent
-    const currentRecordingUi = settings.get_string("recording-ui-mode");
-    const currentProcessingUi = settings.get_string("processing-ui-mode");
-    let selectedIndex = 0; // Default to Dialog
-    if (currentProcessingUi === "silent") {
-      selectedIndex = 2; // Silent
-    } else if (
-      currentRecordingUi === "panel" ||
-      currentProcessingUi === "panel" ||
-      currentProcessingUi === "toast"
-    ) {
-      selectedIndex = 1; // Notification
-    }
-    notificationStyleRow.set_selected(selectedIndex);
+    // Map setting values to list indices
+    const progressDisplayMap = {
+      always: 0,
+      normal: 1,
+      silent: 2,
+    };
+    const reverseMap = ["always", "normal", "silent"];
 
-    notificationStyleRow.connect("notify::selected", (widget) => {
+    // Set initial value
+    const currentProgressDisplay = settings.get_string("progress-display");
+    progressDisplayRow.set_selected(
+      progressDisplayMap[currentProgressDisplay] ?? 0
+    );
+
+    // Bind to setting
+    progressDisplayRow.connect("notify::selected", (widget) => {
       const selected = widget.get_selected();
-      if (selected === 0) {
-        // Dialog mode: modal for both
-        settings.set_string("recording-ui-mode", "modal");
-        settings.set_string("processing-ui-mode", "modal");
-      } else if (selected === 1) {
-        // Notification mode: panel for recording, toast for processing
-        settings.set_string("recording-ui-mode", "panel");
-        settings.set_string("processing-ui-mode", "toast");
-      } else if (selected === 2) {
-        // Silent mode: panel for recording, silent for processing
-        settings.set_string("recording-ui-mode", "panel");
-        settings.set_string("processing-ui-mode", "silent");
-      }
+      settings.set_string("progress-display", reverseMap[selected]);
     });
 
-    uiGroup.add(notificationStyleRow);
+    uiGroup.add(progressDisplayRow);
 
     // Post-Recording Action Group
     const postRecordingGroup = new Adw.PreferencesGroup({
