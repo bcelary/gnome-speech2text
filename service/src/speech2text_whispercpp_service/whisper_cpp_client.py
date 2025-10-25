@@ -227,7 +227,8 @@ class WhisperCppClient:
                     timeout=2,
                 )
                 # Check if line starts with -nc and contains --no-context
-                for line in help_output.stdout.splitlines():
+                # Note: whisper-server outputs help to stderr, not stdout
+                for line in help_output.stderr.splitlines():
                     stripped = line.lstrip()
                     if stripped.startswith("-nc") and "--no-context" in line:
                         cmd.append("-nc")
