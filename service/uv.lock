@@ -857,7 +857,7 @@ wheels = [
 
 [[package]]
 name = "speech2text-whispercpp-service"
-version = "0.9"
+version = "0.9.1"
 source = { editable = "." }
 dependencies = [
     { name = "requests" },
