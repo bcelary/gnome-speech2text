@@ -391,6 +391,13 @@ class TranscriptionResource:
                 # Empty string is valid (no speech detected)
                 return response.text
 
+        except requests.exceptions.Timeout as e:
+            # Timeout - transcription took too long
+            raise requests.exceptions.Timeout(
+                f"Transcription timeout after {timeout}s. "
+                "Audio too long or model too slow. "
+                "Increase WHISPER_TIMEOUT or use faster model."
+            ) from e
         except requests.exceptions.HTTPError as e:
             # Enhance error messages
             if e.response is not None and e.response.status_code == 404:
