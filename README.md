@@ -103,7 +103,7 @@ If you installed the extension from extensions.gnome.org:
 
 ```bash
 pipx install --system-site-packages \
-  'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service-whispercpp'
+  'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service'
 speech2text-whispercpp-setup
 ```
 
@@ -168,7 +168,7 @@ make help                    # See all available targets
 ./scripts/tail-logs.sh       # View extension logs
 ```
 
-For service development, see [service-whispercpp/README.md](./service-whispercpp/README.md).
+For service development, see [service/README.md](./service/README.md).
 
 ## Uninstall
 

@@ -6,7 +6,7 @@ SERVICE_NAME = speech2text-whispercpp-service
 SETUP_CMD = speech2text-whispercpp-setup
 UNINSTALL_CMD = speech2text-whispercpp-uninstall
 DBUS_SERVICE_FILE = $(HOME)/.local/share/dbus-1/services/org.gnome.Shell.Extensions.Speech2TextWhisperCpp.service
-GITHUB_URL = git+https://github.com/bcelary/gnome-speech2text.git\#subdirectory=service-whispercpp
+GITHUB_URL = git+https://github.com/bcelary/gnome-speech2text.git\#subdirectory=service
 
 # Colors for output
 RED = \033[0;31m

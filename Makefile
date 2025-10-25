@@ -56,7 +56,7 @@ help:
 	@echo "  package                  - Create distribution package"
 	@echo "  clean                    - Remove build artifacts"
 	@echo ""
-	@echo "$(BLUE)ℹ️  For service-only operations: cd service-whispercpp && make help$(NC)"
+	@echo "$(BLUE)ℹ️  For service-only operations: cd service && make help$(NC)"
 
 # Copy extension files to installation directory
 copy-files:
@@ -98,19 +98,19 @@ reset-settings:
 
 # Remove service files and pipx package
 remove-service:
-	@cd service-whispercpp && $(MAKE) uninstall
+	@cd service && $(MAKE) uninstall
 
 # Install service via pipx (from GitHub)
 install-service:
-	@cd service-whispercpp && $(MAKE) install
+	@cd service && $(MAKE) install
 
 # Install service from local source
 install-service-local:
-	@cd service-whispercpp && $(MAKE) install-local
+	@cd service && $(MAKE) install-local
 
 # Upgrade service
 upgrade-service:
-	@cd service-whispercpp && $(MAKE) upgrade
+	@cd service && $(MAKE) upgrade
 
 # Convenience: Install everything (service + extension)
 install:
@@ -214,7 +214,7 @@ status:
 	@echo "  Session:     $(XDG_SESSION_TYPE)"
 	@echo "  Directory:   $(EXTENSION_DIR)"
 	@echo ""
-	@cd service-whispercpp && $(MAKE) --no-print-directory status
+	@cd service && $(MAKE) --no-print-directory status
 
 # Verify schema installation
 verify-schema:
@@ -239,7 +239,7 @@ clean:
 		rm -rf dist; \
 		echo "$(GREEN)✅ Removed dist/$(NC)"; \
 	fi
-	@cd service-whispercpp && $(MAKE) clean
+	@cd service && $(MAKE) clean
 	@echo "$(GREEN)✅ Build artifacts cleaned$(NC)"
 
 # ════════════════════════════════════════════════════════════════
