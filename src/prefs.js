@@ -1,7 +1,11 @@
 import Adw from "gi://Adw";
 import Gtk from "gi://Gtk";
 import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
-import { SCHEMA_ID, RECORDING_DURATION } from "./lib/constants.js";
+import {
+  SCHEMA_ID,
+  RECORDING_DURATION,
+  GITHUB_REPO_URL,
+} from "./lib/constants.js";
 
 export default class Speech2TextPreferences extends ExtensionPreferences {
   fillPreferencesWindow(window) {
@@ -184,6 +188,29 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
     durationRow.add_suffix(durationBox);
     durationRow.activatable_widget = durationSpinButton;
     durationGroup.add(durationRow);
+
+    // Setup Requirements Group
+    const setupGroup = new Adw.PreferencesGroup({
+      title: "Setup Requirements",
+      description:
+        "Extension requires D-Bus service and whisper.cpp server to function",
+    });
+    page.add(setupGroup);
+
+    const setupRow = new Adw.ActionRow({
+      title: "Installation Guide",
+      subtitle: "See full setup instructions including service and server setup",
+    });
+
+    const setupButton = new Gtk.LinkButton({
+      label: "Open Setup Guide",
+      uri: GITHUB_REPO_URL,
+      valign: Gtk.Align.CENTER,
+    });
+
+    setupRow.add_suffix(setupButton);
+    setupRow.activatable_widget = setupButton;
+    setupGroup.add(setupRow);
   }
 
   _formatSeconds(totalSeconds) {
