@@ -6,12 +6,11 @@ import { KeybindingManager } from "./lib/keybindingManager.js";
 import { Logger } from "./lib/logger.js";
 import { SCHEMA_ID } from "./lib/constants.js";
 
-const logger = new Logger("Extension");
-
 export default class Speech2TextExtension extends Extension {
   constructor(metadata) {
     super(metadata);
 
+    this.logger = new Logger("Extension");
     this.settings = null;
     this.uiManager = null;
     this.uiCoordinator = null;
@@ -20,7 +19,7 @@ export default class Speech2TextExtension extends Extension {
   }
 
   async enable() {
-    logger.info("Enabling Speech2Text extension (D-Bus version)");
+    this.logger.info("Enabling Speech2Text extension (D-Bus version)");
     this.settings = this.getSettings(SCHEMA_ID);
 
     this.dbusManager = new DBusManager();
@@ -34,7 +33,7 @@ export default class Speech2TextExtension extends Extension {
 
     // Setup automatic recovery when service dies
     this.dbusManager.setServiceDiedCallback(() => {
-      logger.warn("Service died unexpectedly, forcing UI reset");
+      this.logger.warn("Service died unexpectedly, forcing UI reset");
       this.uiCoordinator.forceReset();
     });
 
@@ -46,7 +45,7 @@ export default class Speech2TextExtension extends Extension {
     // Always reset service state on startup (cleans orphaned recordings from sleep/wake)
     await this._resetServiceState();
 
-    logger.info("Extension enabled successfully");
+    this.logger.info("Extension enabled successfully");
   }
 
   async _resetServiceState() {
@@ -54,10 +53,10 @@ export default class Speech2TextExtension extends Extension {
       // Reset service state (UI already initialized to IDLE)
       const success = await this.dbusManager.forceReset();
       if (success) {
-        logger.debug("Service state reset on startup");
+        this.logger.debug("Service state reset on startup");
       }
     } catch (error) {
-      logger.debug("Error resetting service state:", error.message);
+      this.logger.debug("Error resetting service state:", error.message);
       // Non-fatal - continue with extension initialization
     }
   }
@@ -84,17 +83,19 @@ export default class Speech2TextExtension extends Extension {
 
   async toggleRecording() {
     try {
-      logger.debug("=== TOGGLE RECORDING (D-Bus) ===");
+      this.logger.debug("=== TOGGLE RECORDING (D-Bus) ===");
 
       if (!this.settings || !this.uiManager) {
-        logger.info(
+        this.logger.info(
           "Extension state inconsistent, attempting comprehensive auto-recovery"
         );
         await this._performAutoRecovery();
       }
 
       if (!this.settings || !this.uiManager) {
-        logger.error("Required components still missing after auto-recovery");
+        this.logger.error(
+          "Required components still missing after auto-recovery"
+        );
         return;
       }
 
@@ -107,7 +108,7 @@ export default class Speech2TextExtension extends Extension {
         await this.uiCoordinator.startRecording(this.settings);
       }
     } catch (error) {
-      logger.error("Error in toggleRecording:", error);
+      this.logger.error("Error in toggleRecording:", error);
       this.uiManager.showErrorNotification(
         "Speech2Text Error",
         "An error occurred while toggling recording. Please check the logs."
@@ -117,7 +118,7 @@ export default class Speech2TextExtension extends Extension {
 
   async _performAutoRecovery() {
     try {
-      logger.info("Attempting full extension state recovery");
+      this.logger.info("Attempting full extension state recovery");
 
       if (!this.settings) {
         this.settings = this.getSettings(SCHEMA_ID);
@@ -150,7 +151,7 @@ export default class Speech2TextExtension extends Extension {
         this._setupSignalHandlers();
       }
     } catch (recoveryError) {
-      logger.error("Comprehensive auto-recovery failed:", recoveryError);
+      this.logger.error("Comprehensive auto-recovery failed:", recoveryError);
       this.uiManager?.showErrorNotification(
         "Speech2Text Error",
         "Extension recovery failed. Please restart GNOME Shell: Alt+F2 → 'r' → Enter"
@@ -160,7 +161,7 @@ export default class Speech2TextExtension extends Extension {
   }
 
   disable() {
-    logger.info("Disabling Speech2Text extension (D-Bus version)");
+    this.logger.info("Disabling Speech2Text extension (D-Bus version)");
 
     // Clean up components in reverse order of initialization
     if (this.keybindingManager) {
@@ -169,13 +170,13 @@ export default class Speech2TextExtension extends Extension {
     }
 
     if (this.uiCoordinator) {
-      logger.debug("Cleaning up UI coordinator");
+      this.logger.debug("Cleaning up UI coordinator");
       this.uiCoordinator.cleanup();
       this.uiCoordinator = null;
     }
 
     if (this.uiManager) {
-      logger.debug("Cleaning up UI manager");
+      this.logger.debug("Cleaning up UI manager");
       this.uiManager.cleanup();
       this.uiManager = null;
     }

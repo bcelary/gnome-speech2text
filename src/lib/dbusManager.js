@@ -2,8 +2,6 @@ import Gio from "gi://Gio";
 import { Logger } from "./logger.js";
 import { DBUS_NAME, DBUS_PATH } from "./constants.js";
 
-const logger = new Logger("DBus");
-
 // D-Bus interface XML for the speech2text service
 const Speech2TextInterface = `
 <node>
@@ -64,6 +62,7 @@ const Speech2TextInterface = `
 
 export class DBusManager {
   constructor() {
+    this.logger = new Logger("DBus");
     this.dbusProxy = null;
     this.signalConnections = [];
     this.isInitialized = false;
@@ -78,7 +77,9 @@ export class DBusManager {
       // Clean up existing proxy and signals before creating a new one
       // This prevents duplicate signal connections if initialize() is called multiple times
       if (this.dbusProxy) {
-        logger.debug("Cleaning up existing D-Bus proxy before reinitializing");
+        this.logger.debug(
+          "Cleaning up existing D-Bus proxy before reinitializing"
+        );
         this.disconnectSignals();
         this.dbusProxy = null;
       }
@@ -100,10 +101,10 @@ export class DBusManager {
         // Monitor service lifecycle - detect when service dies
         this._setupServiceMonitoring();
 
-        logger.info("D-Bus proxy initialized and service is reachable");
+        this.logger.info("D-Bus proxy initialized and service is reachable");
         return true;
       } catch (serviceError) {
-        logger.debug(
+        this.logger.debug(
           "D-Bus proxy created but service is not reachable:",
           serviceError.message
         );
@@ -111,14 +112,14 @@ export class DBusManager {
         return false;
       }
     } catch (e) {
-      logger.error(`Failed to initialize D-Bus proxy: ${e}`);
+      this.logger.error(`Failed to initialize D-Bus proxy: ${e}`);
       return false;
     }
   }
 
   connectSignals(handlers) {
     if (!this.dbusProxy) {
-      logger.error("Cannot connect signals: D-Bus proxy not initialized");
+      this.logger.error("Cannot connect signals: D-Bus proxy not initialized");
       return false;
     }
 
@@ -130,7 +131,7 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "RecordingStarted",
         (proxy, sender, [recordingId]) => {
-          logger.debug(`Recording started: ${recordingId}`);
+          this.logger.debug(`Recording started: ${recordingId}`);
           handlers.onRecordingStarted?.(recordingId);
         }
       )
@@ -140,7 +141,9 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "RecordingStopped",
         (proxy, sender, [recordingId, reason]) => {
-          logger.debug(`Recording stopped: ${recordingId}, reason: ${reason}`);
+          this.logger.debug(
+            `Recording stopped: ${recordingId}, reason: ${reason}`
+          );
           handlers.onRecordingStopped?.(recordingId, reason);
         }
       )
@@ -150,7 +153,9 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "TranscriptionReady",
         (proxy, sender, [recordingId, text]) => {
-          logger.debug(`Transcription ready: ${recordingId}, text: ${text}`);
+          this.logger.debug(
+            `Transcription ready: ${recordingId}, text: ${text}`
+          );
           handlers.onTranscriptionReady?.(recordingId, text);
         }
       )
@@ -160,7 +165,7 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "RecordingError",
         (proxy, sender, [recordingId, errorMessage]) => {
-          logger.debug(
+          this.logger.debug(
             `Recording error: ${recordingId}, error: ${errorMessage}`
           );
           handlers.onRecordingError?.(recordingId, errorMessage);
@@ -186,7 +191,7 @@ export class DBusManager {
       )
     );
 
-    logger.info("D-Bus signals connected successfully");
+    this.logger.info("D-Bus signals connected successfully");
     return true;
   }
 
@@ -196,7 +201,7 @@ export class DBusManager {
         try {
           this.dbusProxy.disconnectSignal(connection);
         } catch {
-          logger.debug(
+          this.logger.debug(
             `Signal connection ${connection} was already disconnected or invalid`
           );
         }
@@ -220,12 +225,12 @@ export class DBusManager {
       (proxy) => {
         const owner = proxy.g_name_owner;
         if (!owner) {
-          logger.warn("Service died - name owner lost");
+          this.logger.warn("Service died - name owner lost");
           if (this.onServiceDied) {
             this.onServiceDied();
           }
         } else {
-          logger.info("Service owner changed:", owner);
+          this.logger.info("Service owner changed:", owner);
         }
       }
     );
@@ -237,16 +242,16 @@ export class DBusManager {
 
   async forceReset() {
     if (!this.dbusProxy) {
-      logger.debug("Cannot force reset: no D-Bus proxy");
+      this.logger.debug("Cannot force reset: no D-Bus proxy");
       return false;
     }
 
     try {
       const [success] = await this.dbusProxy.ForceResetAsync();
-      logger.info(`ForceReset called, success: ${success}`);
+      this.logger.info(`ForceReset called, success: ${success}`);
       return success;
     } catch (e) {
-      logger.error(`ForceReset error: ${e}`);
+      this.logger.error(`ForceReset error: ${e}`);
       return false;
     }
   }
@@ -283,7 +288,7 @@ export class DBusManager {
 
       return { available: false, error: "Unknown service status" };
     } catch (e) {
-      logger.error(`Error checking service status: ${e}`);
+      this.logger.error(`Error checking service status: ${e}`);
 
       if (
         e.message &&
@@ -382,7 +387,7 @@ export class DBusManager {
     this.lastConnectionCheck = now;
 
     if (!this.dbusProxy || !this.isInitialized) {
-      logger.debug("D-Bus connection invalid, need to reinitialize");
+      this.logger.debug("D-Bus connection invalid, need to reinitialize");
       return false;
     }
 
@@ -391,7 +396,7 @@ export class DBusManager {
       await this.dbusProxy.GetServiceStatusAsync();
       return true;
     } catch (e) {
-      logger.debug("D-Bus connection validation failed:", e.message);
+      this.logger.debug("D-Bus connection validation failed:", e.message);
       // Connection is stale, need to reinitialize
       this.isInitialized = false;
       this.dbusProxy = null;
@@ -402,7 +407,7 @@ export class DBusManager {
   async ensureConnection() {
     const isValid = await this.validateConnection();
     if (!isValid) {
-      logger.info("Reinitializing D-Bus connection...");
+      this.logger.info("Reinitializing D-Bus connection...");
       // initialize() already handles D-Bus auto-activation via GetServiceStatusAsync()
       // No need for separate activation attempt
       return await this.initialize();

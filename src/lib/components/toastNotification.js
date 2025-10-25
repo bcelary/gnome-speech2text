@@ -6,15 +6,6 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
  */
 export class ToastNotification {
   /**
-   * Show a toast notification
-   * @param {string} title - Notification title
-   * @param {string} message - Notification message
-   */
-  static show(title, message) {
-    Main.notify(title, message);
-  }
-
-  /**
    * Show processing notification
    */
   static showProcessing() {

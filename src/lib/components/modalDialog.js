@@ -8,14 +8,13 @@ import { COLORS, STYLES } from "../constants.js";
 import { createHoverButton, createHorizontalBox } from "../uiUtils.js";
 import { Logger } from "../logger.js";
 
-const logger = new Logger("ModalDialog");
-
 /**
  * Dumb ModalDialog component - pre-built state containers, toggle visibility
  * No logic, no decisions - just shows what it's told
  */
 export class ModalDialog {
   constructor() {
+    this.logger = new Logger("ModalDialog");
     this.modalBarrier = null;
     this.container = null;
     this.focusTimeoutId = null;
@@ -33,6 +32,9 @@ export class ModalDialog {
     this.recordingProgressBg = null;
     this.previewTextEntry = null;
     this.errorMessageLabel = null;
+
+    // Button widgets and their signal IDs for cleanup
+    this.buttonConnections = [];
 
     // Callbacks set by UICoordinator
     this.onCancel = null;
@@ -209,8 +211,14 @@ export class ModalDialog {
       COLORS.DARK_GRAY
     );
 
-    stopButton.connect("clicked", () => this.onStop?.());
-    cancelButton.connect("clicked", () => this.onCancel?.());
+    this.buttonConnections.push({
+      widget: stopButton,
+      signalId: stopButton.connect("clicked", () => this.onStop?.()),
+    });
+    this.buttonConnections.push({
+      widget: cancelButton,
+      signalId: cancelButton.connect("clicked", () => this.onCancel?.()),
+    });
 
     buttonBox.add_child(stopButton);
     buttonBox.add_child(cancelButton);
@@ -272,7 +280,10 @@ export class ModalDialog {
       COLORS.DARK_GRAY
     );
 
-    cancelButton.connect("clicked", () => this.onCancel?.());
+    this.buttonConnections.push({
+      widget: cancelButton,
+      signalId: cancelButton.connect("clicked", () => this.onCancel?.()),
+    });
 
     buttonBox.set_child(cancelButton);
 
@@ -333,9 +344,12 @@ export class ModalDialog {
         COLORS.SUCCESS,
         "#34ce57"
       );
-      insertButton.connect("clicked", () => {
-        const finalText = this.previewTextEntry.get_text();
-        this.onInsert?.(finalText);
+      this.buttonConnections.push({
+        widget: insertButton,
+        signalId: insertButton.connect("clicked", () => {
+          const finalText = this.previewTextEntry.get_text();
+          this.onInsert?.(finalText);
+        }),
       });
       buttonBox.add_child(insertButton);
     }
@@ -346,9 +360,12 @@ export class ModalDialog {
       COLORS.INFO,
       "#0077ee"
     );
-    copyButton.connect("clicked", () => {
-      const finalText = this.previewTextEntry.get_text();
-      this.onCopy?.(finalText);
+    this.buttonConnections.push({
+      widget: copyButton,
+      signalId: copyButton.connect("clicked", () => {
+        const finalText = this.previewTextEntry.get_text();
+        this.onCopy?.(finalText);
+      }),
     });
 
     // Cancel button
@@ -357,7 +374,10 @@ export class ModalDialog {
       COLORS.SECONDARY,
       COLORS.DARK_GRAY
     );
-    cancelButton.connect("clicked", () => this.onCancel?.());
+    this.buttonConnections.push({
+      widget: cancelButton,
+      signalId: cancelButton.connect("clicked", () => this.onCancel?.()),
+    });
 
     buttonBox.add_child(copyButton);
     buttonBox.add_child(cancelButton);
@@ -423,7 +443,10 @@ export class ModalDialog {
       COLORS.SECONDARY,
       COLORS.DARK_GRAY
     );
-    closeButton.connect("clicked", () => this.onCancel?.());
+    this.buttonConnections.push({
+      widget: closeButton,
+      signalId: closeButton.connect("clicked", () => this.onCancel?.()),
+    });
 
     buttonBox.set_child(closeButton);
 
@@ -522,7 +545,7 @@ export class ModalDialog {
    * Open the dialog
    */
   open() {
-    logger.info("Opening modal dialog");
+    this.logger.info("Opening modal dialog");
 
     Main.layoutManager.addTopChrome(this.modalBarrier);
 
@@ -547,7 +570,7 @@ export class ModalDialog {
           this.modalBarrier.grab_key_focus();
         }
       } catch (error) {
-        logger.debug("Focus grab failed (non-critical):", error.message);
+        this.logger.debug("Focus grab failed (non-critical):", error.message);
       }
       this.focusTimeoutId = null;
       return false;
@@ -558,10 +581,10 @@ export class ModalDialog {
    * Close the dialog (hides and removes from screen, but doesn't destroy)
    */
   close() {
-    logger.info("Closing modal dialog");
+    this.logger.info("Closing modal dialog");
 
     if (!this.modalBarrier) {
-      logger.debug("Modal already cleaned up");
+      this.logger.debug("Modal already cleaned up");
       return;
     }
 
@@ -579,7 +602,7 @@ export class ModalDialog {
         try {
           Main.layoutManager.removeChrome(this.modalBarrier);
         } catch (chromeError) {
-          logger.debug(
+          this.logger.debug(
             "Chrome removal failed, trying parent:",
             chromeError.message
           );
@@ -590,7 +613,7 @@ export class ModalDialog {
         }
       }
     } catch (error) {
-      logger.debug("Cleanup error:", error.message);
+      this.logger.debug("Cleanup error:", error.message);
     }
   }
 
@@ -605,7 +628,7 @@ export class ModalDialog {
    * Destroy the dialog (fully cleanup, can't be reused)
    */
   destroy() {
-    logger.info("Destroying modal dialog");
+    this.logger.info("Destroying modal dialog");
 
     if (!this.modalBarrier) {
       return;
@@ -624,10 +647,22 @@ export class ModalDialog {
           this.modalBarrier.disconnect(this.keyboardHandlerId);
         }
       } catch (error) {
-        logger.debug("Keyboard handler disconnect failed:", error.message);
+        this.logger.debug("Keyboard handler disconnect failed:", error.message);
       }
       this.keyboardHandlerId = null;
     }
+
+    // Disconnect all button signals
+    for (const connection of this.buttonConnections) {
+      try {
+        if (connection.widget && connection.signalId) {
+          connection.widget.disconnect(connection.signalId);
+        }
+      } catch (error) {
+        this.logger.debug("Button signal disconnect failed:", error.message);
+      }
+    }
+    this.buttonConnections = [];
 
     // Hide, remove, and destroy
     const modal = this.modalBarrier;
@@ -640,7 +675,7 @@ export class ModalDialog {
         try {
           Main.layoutManager.removeChrome(modal);
         } catch (chromeError) {
-          logger.debug(
+          this.logger.debug(
             "Chrome removal failed, trying parent:",
             chromeError.message
           );
@@ -655,7 +690,7 @@ export class ModalDialog {
         modal.destroy();
       }
     } catch (error) {
-      logger.debug("Destroy error:", error.message);
+      this.logger.debug("Destroy error:", error.message);
     }
   }
 }

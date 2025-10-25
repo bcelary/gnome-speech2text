@@ -3,10 +3,9 @@ import Shell from "gi://Shell";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { Logger } from "./logger.js";
 
-const logger = new Logger("Keybinding");
-
 export class KeybindingManager {
   constructor(extensionCore) {
+    this.logger = new Logger("Keybinding");
     this.extensionCore = extensionCore;
     this.currentKeybinding = null;
   }
@@ -35,12 +34,12 @@ export class KeybindingManager {
       Meta.KeyBindingFlags.NONE,
       Shell.ActionMode.NORMAL,
       () => {
-        logger.debug("Keyboard shortcut triggered");
+        self.logger.debug("Keyboard shortcut triggered");
         // Use direct reference to this extension instance
         self.extensionCore.toggleRecording();
       }
     );
-    logger.info(`Keybinding registered: ${this.currentKeybinding}`);
+    this.logger.info(`Keybinding registered: ${this.currentKeybinding}`);
   }
 
   cleanup() {

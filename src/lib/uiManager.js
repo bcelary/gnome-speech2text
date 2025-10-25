@@ -5,10 +5,9 @@ import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 import { Logger } from "./logger.js";
 
-const logger = new Logger("UI");
-
 export class UIManager {
   constructor(extensionCore) {
+    this.logger = new Logger("UI");
     this.extensionCore = extensionCore;
     this.icon = null;
     this.iconWidget = null;
@@ -72,7 +71,7 @@ export class UIManager {
         if (buttonPressed === 1) {
           // Left click - toggle recording
           self.icon.menu.close(true);
-          logger.debug("Click handler triggered");
+          self.logger.debug("Click handler triggered");
 
           // Use direct reference to this extension instance
           self.extensionCore.toggleRecording();
@@ -93,7 +92,7 @@ export class UIManager {
       Main.panel.statusArea["speech2text-indicator"]?.destroy();
       delete Main.panel.statusArea["speech2text-indicator"];
     } catch (e) {
-      logger.debug("No existing indicator to remove:", e.message);
+      this.logger.debug("No existing indicator to remove:", e.message);
     }
 
     Main.panel.addToStatusArea("speech2text-indicator", this.icon);
@@ -103,7 +102,7 @@ export class UIManager {
     try {
       this.extensionCore.openPreferences();
     } catch (e) {
-      logger.error("Failed to open preferences:", e);
+      this.logger.error("Failed to open preferences:", e);
       Main.notify("Speech2Text", "Failed to open preferences window");
     }
   }
@@ -129,9 +128,12 @@ export class UIManager {
     if (this._buttonPressSignalId && this.icon) {
       try {
         this.icon.disconnect(this._buttonPressSignalId);
-        logger.debug("Button press signal disconnected");
+        this.logger.debug("Button press signal disconnected");
       } catch (error) {
-        logger.debug("Error disconnecting button press signal:", error.message);
+        this.logger.debug(
+          "Error disconnecting button press signal:",
+          error.message
+        );
       }
       this._buttonPressSignalId = null;
     }
@@ -139,7 +141,7 @@ export class UIManager {
     // Clean up panel icon (this.icon and statusArea reference the same object)
     try {
       if (this.icon) {
-        logger.debug("Removing panel icon from status area");
+        this.logger.debug("Removing panel icon from status area");
         // Only destroy once - this.icon and statusArea["speech2text-indicator"] are the same object
         this.icon.destroy();
         this.icon = null;
@@ -147,7 +149,7 @@ export class UIManager {
         delete Main.panel.statusArea["speech2text-indicator"];
       }
     } catch (error) {
-      logger.debug("Error cleaning up panel icon:", error.message);
+      this.logger.debug("Error cleaning up panel icon:", error.message);
       // Force cleanup even if there are errors
       this.icon = null;
       try {
