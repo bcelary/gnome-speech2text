@@ -63,10 +63,10 @@ class Recording:
         config: RecordingConfig,
         transcriber: Transcriber,
         post_processor: PostProcessor,
-        callback: Optional[
+        on_state_change: Optional[
             Callable[[str, RecordingState, Dict[str, Any]], None]
         ] = None,
-        signal_emitter: Optional[Callable[[str, str, bool], None]] = None,
+        on_action_result: Optional[Callable[[str, str, bool], None]] = None,
     ):
         """Initialize recording state machine.
 
@@ -74,14 +74,14 @@ class Recording:
             config: Immutable recording configuration
             transcriber: Transcriber instance for audio-to-text
             post_processor: PostProcessor for clipboard/typing
-            callback: Optional callback for state changes (recording_id, state, data)
-            signal_emitter: Optional callback for emitting D-Bus signals (signal_name, text, success)
+            on_state_change: Callback for lifecycle signals (RecordingStarted, etc)
+            on_action_result: Callback for action result signals (TextTyped, TextCopied)
         """
         self.config = config
         self.transcriber = transcriber
         self.post_processor = post_processor
-        self.callback = callback
-        self.signal_emitter = signal_emitter
+        self.on_state_change = on_state_change
+        self.on_action_result = on_action_result
 
         # State management
         self._state = RecordingState.STARTING
@@ -184,9 +184,9 @@ class Recording:
             )
 
         # Invoke callback outside lock to avoid deadlocks
-        if self.callback:
+        if self.on_state_change:
             try:
-                self.callback(self.config.recording_id, new_state, data or {})
+                self.on_state_change(self.config.recording_id, new_state, data or {})
             except Exception as e:
                 syslog.syslog(
                     syslog.LOG_ERR,
@@ -251,9 +251,9 @@ class Recording:
             )
 
         # Invoke callback outside lock to avoid deadlocks
-        if self.callback:
+        if self.on_state_change:
             try:
-                self.callback(self.config.recording_id, RecordingState.RECORDED, {})
+                self.on_state_change(self.config.recording_id, RecordingState.RECORDED, {})
             except Exception as e:
                 syslog.syslog(
                     syslog.LOG_ERR,
@@ -335,10 +335,10 @@ class Recording:
             return
         success = self.post_processor.copy_to_clipboard(self._transcribed_text)
 
-        # Emit TextCopied signal if signal emitter is available
-        if self.signal_emitter:
+        # Emit TextCopied signal if callback is available
+        if self.on_action_result:
             try:
-                self.signal_emitter("TextCopied", self._transcribed_text, success)
+                self.on_action_result("TextCopied", self._transcribed_text, success)
             except Exception as e:
                 syslog.syslog(
                     syslog.LOG_ERR,
@@ -361,10 +361,10 @@ class Recording:
             return
         success = self.post_processor.type_text(self._transcribed_text)
 
-        # Emit TextTyped signal if signal emitter is available
-        if self.signal_emitter:
+        # Emit TextTyped signal if callback is available
+        if self.on_action_result:
             try:
-                self.signal_emitter("TextTyped", self._transcribed_text, success)
+                self.on_action_result("TextTyped", self._transcribed_text, success)
             except Exception as e:
                 syslog.syslog(
                     syslog.LOG_ERR,

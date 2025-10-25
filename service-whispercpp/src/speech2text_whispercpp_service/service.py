@@ -76,8 +76,8 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             whisper_client=self.whisper_client,
             dependency_checker=self.dependency_checker,
             post_processor=self.post_processor,
-            state_change_callback=self._on_recording_state_change,
-            signal_emitter=self._emit_signal,
+            on_state_signal=self._on_state_change,
+            on_action_signal=self._on_action_result,
         )
 
         # Initialize syslog
@@ -377,15 +377,34 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
         """Signal emitted when text is copied to clipboard."""
         pass
 
-    def _on_recording_state_change(
+    def _on_state_change(
         self, recording_id: str, state: RecordingState, data: Dict[str, Any]
     ) -> None:
-        """Translate Recording state changes to D-Bus signals.
+        """Handle recording state changes (called from worker thread).
+
+        Marshals D-Bus signal emission to main loop for thread safety.
 
         Args:
             recording_id: Recording identifier
             state: New recording state
             data: State-specific data
+        """
+        GLib.idle_add(
+            self._emit_state_signal_mainloop, recording_id, state, data, priority=GLib.PRIORITY_HIGH
+        )
+
+    def _emit_state_signal_mainloop(
+        self, recording_id: str, state: RecordingState, data: Dict[str, Any]
+    ) -> bool:
+        """Emit D-Bus signal for state change (runs in main loop).
+
+        Args:
+            recording_id: Recording identifier
+            state: New recording state
+            data: State-specific data
+
+        Returns:
+            False to prevent re-invocation by GLib
         """
         try:
             if state == RecordingState.RECORDING:
@@ -411,13 +430,34 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
                 syslog.LOG_ERR, f"Error emitting D-Bus signal for state {state}: {e}"
             )
 
-    def _emit_signal(self, signal_name: str, text: str, success: bool) -> None:
-        """Emit a D-Bus signal for post-processing actions.
+        return False  # Don't repeat
+
+    def _on_action_result(self, signal_name: str, text: str, success: bool) -> None:
+        """Handle action result signal (called from worker thread).
+
+        Marshals D-Bus signal emission to main loop for thread safety.
 
         Args:
             signal_name: Name of the signal to emit ("TextTyped" or "TextCopied")
             text: The text that was processed
             success: Whether the operation succeeded
+        """
+        GLib.idle_add(
+            self._emit_action_signal_mainloop, signal_name, text, success, priority=GLib.PRIORITY_HIGH
+        )
+
+    def _emit_action_signal_mainloop(
+        self, signal_name: str, text: str, success: bool
+    ) -> bool:
+        """Emit D-Bus signal for action result (runs in main loop).
+
+        Args:
+            signal_name: Name of the signal to emit ("TextTyped" or "TextCopied")
+            text: The text that was processed
+            success: Whether the operation succeeded
+
+        Returns:
+            False to prevent re-invocation by GLib
         """
         try:
             if signal_name == "TextTyped":
@@ -428,6 +468,8 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
                 syslog.syslog(syslog.LOG_WARNING, f"Unknown signal name: {signal_name}")
         except Exception as e:
             syslog.syslog(syslog.LOG_ERR, f"Error emitting {signal_name} signal: {e}")
+
+        return False  # Don't repeat
 
 
 def main() -> int:

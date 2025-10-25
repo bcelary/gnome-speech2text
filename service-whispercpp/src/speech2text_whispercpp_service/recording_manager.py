@@ -39,10 +39,10 @@ class RecordingManager:
         whisper_client: WhisperCppClient,
         dependency_checker: DependencyChecker,
         post_processor: PostProcessor,
-        state_change_callback: Optional[
+        on_state_signal: Optional[
             Callable[[str, RecordingState, Dict[str, Any]], None]
         ] = None,
-        signal_emitter: Optional[Callable[[str, str, bool], None]] = None,
+        on_action_signal: Optional[Callable[[str, str, bool], None]] = None,
     ):
         """Initialize recording manager.
 
@@ -51,15 +51,15 @@ class RecordingManager:
             whisper_client: WhisperCppClient instance
             dependency_checker: Dependency checker instance
             post_processor: PostProcessor instance
-            state_change_callback: Callback for recording state changes
-            signal_emitter: Optional callback for emitting D-Bus signals (signal_name, text, success)
+            on_state_signal: Callback for lifecycle signals (RecordingStarted, etc)
+            on_action_signal: Callback for action result signals (TextTyped, TextCopied)
         """
         self.service_config = service_config
         self.whisper_client = whisper_client
         self.dependency_checker = dependency_checker
         self.post_processor = post_processor
-        self.state_change_callback = state_change_callback
-        self.signal_emitter = signal_emitter
+        self.on_state_signal = on_state_signal
+        self.on_action_signal = on_action_signal
 
         # Single current recording
         self._current_recording: Optional[Recording] = None
@@ -306,8 +306,8 @@ class RecordingManager:
             config=config,
             transcriber=transcriber,
             post_processor=self.post_processor,
-            callback=self._on_recording_state_change,
-            signal_emitter=self.signal_emitter,
+            on_state_change=self._on_recording_state_change,
+            on_action_result=self.on_action_signal,
         )
 
     def _recording_worker(self, recording: Recording) -> None:
@@ -353,10 +353,10 @@ class RecordingManager:
             f"Recording {recording_id} state changed to {state.value}",
         )
 
-        # Forward to D-Bus callback if registered
-        if self.state_change_callback:
+        # Forward to D-Bus signal emitter if registered
+        if self.on_state_signal:
             try:
-                self.state_change_callback(recording_id, state, data)
+                self.on_state_signal(recording_id, state, data)
             except Exception as e:
                 syslog.syslog(
                     syslog.LOG_ERR,
