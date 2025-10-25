@@ -408,8 +408,8 @@ export class UICoordinator {
       this.maxDuration
     );
 
-    // Modal: only show if "always" mode
-    if (progressDisplay === "always") {
+    // Modal: show if "always" or "focused" mode
+    if (progressDisplay === "always" || progressDisplay === "focused") {
       // Update content FIRST (containers pre-built, just toggle + update)
       const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
       const remaining = Math.max(0, this.maxDuration - elapsed);
@@ -463,6 +463,14 @@ export class UICoordinator {
         if (!this.modalDialog.isOpen()) {
           this.modalDialog.open();
         }
+        break;
+
+      case "focused":
+        // Close modal (was shown during recording), panel only
+        if (this.modalDialog.isOpen()) {
+          this.modalDialog.close();
+        }
+        // No toast - user dismissed recording, let transcription happen in background
         break;
 
       case "normal":

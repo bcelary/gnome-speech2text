@@ -26,12 +26,13 @@
         <key name="progress-display" type="s">
             <choices>
                 <choice value="always"/>
+                <choice value="focused"/>
                 <choice value="normal"/>
                 <choice value="silent"/>
             </choices>
             <default>"normal"</default>
             <summary>Progress display</summary>
-            <description>How to show recording and transcription progress: always (blocks screen), normal (brief messages), or silent (errors only)</description>
+            <description>How to show recording and transcription progress: always (blocks screen during recording and transcription), focused (blocks during recording only), normal (brief messages), or silent (errors only)</description>
         </key>
     </schema>
 </schemalist>

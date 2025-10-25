@@ -29,6 +29,7 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
 
     const progressDisplayList = new Gtk.StringList();
     progressDisplayList.append("Always (blocks screen)");
+    progressDisplayList.append("Focused (blocks recording only)");
     progressDisplayList.append("Normal (brief messages)");
     progressDisplayList.append("Errors only");
     progressDisplayRow.set_model(progressDisplayList);
@@ -36,10 +37,11 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
     // Map setting values to list indices
     const progressDisplayMap = {
       always: 0,
-      normal: 1,
-      silent: 2,
+      focused: 1,
+      normal: 2,
+      silent: 3,
     };
-    const reverseMap = ["always", "normal", "silent"];
+    const reverseMap = ["always", "focused", "normal", "silent"];
 
     // Set initial value
     const currentProgressDisplay = settings.get_string("progress-display");
