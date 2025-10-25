@@ -2,14 +2,13 @@ import Adw from "gi://Adw";
 import Gtk from "gi://Gtk";
 import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
 import {
-  SCHEMA_ID,
   RECORDING_DURATION,
   GITHUB_REPO_URL,
 } from "./lib/constants.js";
 
 export default class Speech2TextPreferences extends ExtensionPreferences {
   fillPreferencesWindow(window) {
-    const settings = this.getSettings(SCHEMA_ID);
+    const settings = this.getSettings();
 
     // Create a preferences page
     const page = new Adw.PreferencesPage({

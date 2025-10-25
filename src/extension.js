@@ -4,13 +4,12 @@ import { UICoordinator } from "./lib/uiCoordinator.js";
 import { DBusManager } from "./lib/dbusManager.js";
 import { KeybindingManager } from "./lib/keybindingManager.js";
 import { Logger } from "./lib/logger.js";
-import { SCHEMA_ID } from "./lib/constants.js";
 
 export default class Speech2TextExtension extends Extension {
   constructor(metadata) {
     super(metadata);
 
-    this.logger = new Logger("Extension");
+    this.logger = null;
     this.settings = null;
     this.uiManager = null;
     this.uiCoordinator = null;
@@ -19,8 +18,9 @@ export default class Speech2TextExtension extends Extension {
   }
 
   async enable() {
+    this.logger = new Logger("Extension");
     this.logger.info("Enabling Speech2Text extension (D-Bus version)");
-    this.settings = this.getSettings(SCHEMA_ID);
+    this.settings = this.getSettings();
 
     this.dbusManager = new DBusManager();
     await this.dbusManager.initialize();
@@ -121,7 +121,7 @@ export default class Speech2TextExtension extends Extension {
       this.logger.info("Attempting full extension state recovery");
 
       if (!this.settings) {
-        this.settings = this.getSettings(SCHEMA_ID);
+        this.settings = this.getSettings();
       }
 
       if (!this.uiManager) {
@@ -161,7 +161,7 @@ export default class Speech2TextExtension extends Extension {
   }
 
   disable() {
-    this.logger.info("Disabling Speech2Text extension (D-Bus version)");
+    this.logger?.info("Disabling Speech2Text extension (D-Bus version)");
 
     // Clean up components in reverse order of initialization
     if (this.keybindingManager) {
@@ -170,13 +170,13 @@ export default class Speech2TextExtension extends Extension {
     }
 
     if (this.uiCoordinator) {
-      this.logger.debug("Cleaning up UI coordinator");
+      this.logger?.debug("Cleaning up UI coordinator");
       this.uiCoordinator.cleanup();
       this.uiCoordinator = null;
     }
 
     if (this.uiManager) {
-      this.logger.debug("Cleaning up UI manager");
+      this.logger?.debug("Cleaning up UI manager");
       this.uiManager.cleanup();
       this.uiManager = null;
     }
@@ -186,7 +186,8 @@ export default class Speech2TextExtension extends Extension {
       this.dbusManager = null;
     }
 
-    // Clear settings reference
+    // Clear settings and logger references
     this.settings = null;
+    this.logger = null;
   }
 }

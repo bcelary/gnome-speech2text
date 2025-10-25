@@ -183,8 +183,6 @@ package:
 		exit 1; \
 	fi && \
 	echo "$(GREEN)✅ Clean package verified$(NC)" && \
-	echo "$(BLUE)ℹ️  Compiling schemas...$(NC)" && \
-	glib-compile-schemas "$$PACKAGE_DIR/schemas/" && \
 	echo "$(BLUE)ℹ️  Creating ZIP...$(NC)" && \
 	cd "$$PACKAGE_DIR" && \
 	zip -r "../$$PACKAGE_FILE" . >/dev/null && \
