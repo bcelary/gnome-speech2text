@@ -199,7 +199,8 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
 
     const setupRow = new Adw.ActionRow({
       title: "Installation Guide",
-      subtitle: "See full setup instructions including service and server setup",
+      subtitle:
+        "See full setup instructions including service and server setup",
     });
 
     const setupButton = new Gtk.LinkButton({
