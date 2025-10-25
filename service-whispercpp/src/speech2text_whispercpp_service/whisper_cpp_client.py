@@ -213,6 +213,7 @@ class WhisperCppClient:
                 str(model_path),
                 "-l",
                 self.language,
+                "-nc",  # no-context: prevents deadlock after multiple requests (issue #6, whisper.cpp #3358)
             ]
 
             # Add VAD flags if VAD model is specified

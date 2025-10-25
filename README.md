@@ -107,6 +107,10 @@ gnome-extensions enable speech2text-whispercpp@bcelary.github
 journalctl -f -t speech2text-whispercpp-service  # Service logs
 ```
 
+**Known Issues:**
+
+*whisper-server deadlock after multiple requests* - Fixed in current version by using `-nc` flag. If you experience transcription timeouts after 5-7 recordings, ensure you're running the latest version. The `-nc` flag disables context retention between requests, preventing resource leaks. See [issue #6](../../issues/6) and [whisper.cpp #3358](https://github.com/ggml-org/whisper.cpp/issues/3358) for details.
+
 **Note:** Text insertion requires X11. On Wayland, use clipboard mode.
 
 ## Development
