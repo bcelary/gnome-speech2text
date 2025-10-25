@@ -1,7 +1,7 @@
 {
   "uuid": "speech2text-whispercpp@bcelary.github",
   "name": "Speech2Text with Whisper.cpp",
-  "description": "Local speech-to-text using whisper.cpp. Record audio with a keyboard shortcut and transcribe locally. Requires a companion D-Bus service (installer included).",
+  "description": "Local speech-to-text using whisper.cpp. Record audio with a keyboard shortcut and transcribe locally. Requires a companion D-Bus service (see GitHub for installation).",
   "shell-version": ["46", "47", "48"],
   "url": "https://github.com/bcelary/gnome-speech2text/",
   "author": "Bartek Celary",
