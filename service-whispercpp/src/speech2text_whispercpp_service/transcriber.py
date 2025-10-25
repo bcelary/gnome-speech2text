@@ -19,15 +19,19 @@ from .whisper_cpp_client import WhisperCppClient
 class Transcriber:
     """Wrapper around WhisperCppClient with error enhancement."""
 
-    def __init__(self, client: WhisperCppClient, server_url: str):
+    def __init__(
+        self, client: WhisperCppClient, server_url: str, timeout: float = 30.0
+    ):
         """Initialize transcriber.
 
         Args:
             client: WhisperCppClient instance
             server_url: Server URL for error messages
+            timeout: Request timeout in seconds (default: 30.0)
         """
         self.client = client
         self.server_url = server_url
+        self.timeout = timeout
 
     def transcribe(
         self, audio_file: Path, cancel_event: Optional[threading.Event] = None
@@ -64,7 +68,7 @@ class Transcriber:
                     raise TranscriptionCancelledError("Transcription cancelled by user")
 
                 response = self.client.audio.transcriptions.create(
-                    file=af, response_format="json"
+                    file=af, response_format="json", timeout=self.timeout
                 )
 
             # Check cancellation after request completes
@@ -120,15 +124,16 @@ class Transcriber:
         """
         error_str = str(error)
 
+        # Timeout errors - check first before connection errors
+        if "timeout" in error_str.lower() or "timed out" in error_str.lower():
+            return (
+                f"Transcription timeout ({self.timeout}s) - audio too long or model too slow. "
+                f"Increase WHISPER_TIMEOUT or use faster model"
+            )
+
         # Connection errors
         if "Connection" in error_str or "connection" in error_str:
             return f"Cannot connect to whisper.cpp server at {self.server_url}. Is it running?"
-
-        # Timeout errors
-        if "timeout" in error_str.lower():
-            return (
-                "Server timeout - transcription took too long or server is unresponsive"
-            )
 
         # 404 errors
         if "404" in error_str or "Not Found" in error_str:

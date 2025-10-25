@@ -296,7 +296,9 @@ class RecordingManager:
         """
         # Create transcriber
         transcriber = Transcriber(
-            client=self.whisper_client, server_url=self.service_config.server_url
+            client=self.whisper_client,
+            server_url=self.service_config.server_url,
+            timeout=self.service_config.transcription_timeout,
         )
 
         # Create recording with callback and signal emitter

@@ -41,6 +41,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
     DEFAULT_WHISPER_LANGUAGE = "auto"
     DEFAULT_WHISPER_VAD_MODEL = "auto"
     DEFAULT_WHISPER_AUTO_START = "true"
+    DEFAULT_WHISPER_TIMEOUT = "30.0"
 
     def __init__(self) -> None:
         """Initialize D-Bus service and recording manager."""
@@ -114,12 +115,22 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
         ).lower()
         auto_start = auto_start_str not in ("false", "0", "no", "off")
 
+        # Parse timeout
+        timeout_str = os.environ.get("WHISPER_TIMEOUT", self.DEFAULT_WHISPER_TIMEOUT)
+        try:
+            transcription_timeout = float(timeout_str)
+            if transcription_timeout <= 0:
+                transcription_timeout = float(self.DEFAULT_WHISPER_TIMEOUT)
+        except ValueError:
+            transcription_timeout = float(self.DEFAULT_WHISPER_TIMEOUT)
+
         return ServiceConfig(
             server_url=server_url,
             model_file=model_file,
             language=language,
             vad_model=vad_model,
             auto_start=auto_start,
+            transcription_timeout=transcription_timeout,
         )
 
     def _log_environment_config(self) -> None:
@@ -144,6 +155,10 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             "WHISPER_AUTO_START": (
                 os.environ.get("WHISPER_AUTO_START"),
                 self.DEFAULT_WHISPER_AUTO_START,
+            ),
+            "WHISPER_TIMEOUT": (
+                os.environ.get("WHISPER_TIMEOUT"),
+                self.DEFAULT_WHISPER_TIMEOUT,
             ),
             "XDG_SESSION_TYPE": (os.environ.get("XDG_SESSION_TYPE"), None),
         }
