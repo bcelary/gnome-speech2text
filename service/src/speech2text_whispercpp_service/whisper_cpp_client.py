@@ -6,6 +6,7 @@ This module provides an OpenAI-compatible API for interacting with whisper.cpp s
 It handles server health checking, auto-starting, and audio transcription.
 """
 
+import contextlib
 import re
 import subprocess
 import threading
@@ -218,7 +219,7 @@ class WhisperCppClient:
 
             # Check if -nc/--no-context flag is supported (v1.7.6+, removed in later versions)
             # no-context: prevents deadlock after multiple requests (issue #6, whisper.cpp #3358)
-            try:
+            with contextlib.suppress(Exception):
                 help_output = subprocess.run(
                     ["whisper-server", "-h"],
                     capture_output=True,
@@ -231,8 +232,6 @@ class WhisperCppClient:
                     if stripped.startswith("-nc") and "--no-context" in line:
                         cmd.append("-nc")
                         break
-            except Exception:
-                pass  # If help check fails, continue without -nc
 
             # Add VAD flags if VAD model is specified
             if self.vad_model:
@@ -455,7 +454,7 @@ class TranscriptionResource:
             raise RuntimeError("Transcription cancelled before start")
 
         # Shared state between threads
-        result_container: dict[str, Any] = {}
+        result_container: dict[str, Union[str, dict[str, Any]]] = {}
         exception_container: dict[str, Exception] = {}
         session = requests.Session()
 
@@ -499,10 +498,8 @@ class TranscriptionResource:
             if cancel_event.is_set():
                 # Cancel requested - close session to abort request
                 # This causes whisper.cpp server's abort_callback to fire
-                try:
+                with contextlib.suppress(Exception):
                     session.close()
-                except Exception:
-                    pass  # Ignore errors during close
                 raise RuntimeError("Transcription cancelled by user")
 
             thread.join(timeout=poll_interval)
@@ -535,7 +532,9 @@ class TranscriptionResource:
         else:
             raise RuntimeError("Request thread finished without result or error")
 
-    def _parse_response(self, response: requests.Response) -> Union[str, dict[str, Any]]:
+    def _parse_response(
+        self, response: requests.Response
+    ) -> Union[str, dict[str, Any]]:
         """Parse HTTP response from whisper.cpp server (internal)."""
         # Try to parse as JSON first (all errors are returned as JSON)
         try:

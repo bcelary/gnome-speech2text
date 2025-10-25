@@ -390,7 +390,11 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             data: State-specific data
         """
         GLib.idle_add(
-            self._emit_state_signal_mainloop, recording_id, state, data, priority=GLib.PRIORITY_HIGH
+            self._emit_state_signal_mainloop,
+            recording_id,
+            state,
+            data,
+            priority=GLib.PRIORITY_HIGH,
         )
 
     def _emit_state_signal_mainloop(
@@ -443,7 +447,11 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             success: Whether the operation succeeded
         """
         GLib.idle_add(
-            self._emit_action_signal_mainloop, signal_name, text, success, priority=GLib.PRIORITY_HIGH
+            self._emit_action_signal_mainloop,
+            signal_name,
+            text,
+            success,
+            priority=GLib.PRIORITY_HIGH,
         )
 
     def _emit_action_signal_mainloop(

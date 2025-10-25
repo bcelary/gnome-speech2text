@@ -253,7 +253,9 @@ class Recording:
         # Invoke callback outside lock to avoid deadlocks
         if self.on_state_change:
             try:
-                self.on_state_change(self.config.recording_id, RecordingState.RECORDED, {})
+                self.on_state_change(
+                    self.config.recording_id, RecordingState.RECORDED, {}
+                )
             except Exception as e:
                 syslog.syslog(
                     syslog.LOG_ERR,
