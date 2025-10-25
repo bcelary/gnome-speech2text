@@ -191,11 +191,17 @@ export class UICoordinator {
       return;
     }
 
+    const wasProcessing = this.currentState === State.PROCESSING;
     const recordingId = this.currentRecordingId;
     this.currentRecordingId = null;
 
     try {
       await this.dbusManager.cancelRecording(recordingId);
+
+      // Show notification if cancelling during transcription
+      if (wasProcessing) {
+        ToastNotification.showTranscriptionCancelled();
+      }
     } catch (error) {
       logger.debug("Error canceling recording:", error.message);
     }
@@ -617,6 +623,13 @@ export class UICoordinator {
    */
   isRecording() {
     return this.currentState === State.RECORDING;
+  }
+
+  /**
+   * Check if currently processing
+   */
+  isProcessing() {
+    return this.currentState === State.PROCESSING;
   }
 
   /**

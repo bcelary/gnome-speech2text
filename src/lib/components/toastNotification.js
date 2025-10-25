@@ -49,4 +49,11 @@ export class ToastNotification {
   static showTextTyped() {
     Main.notify("Speech2Text", "Text inserted!");
   }
+
+  /**
+   * Show transcription cancelled notification
+   */
+  static showTranscriptionCancelled() {
+    Main.notify("Speech2Text", "Transcription cancelled");
+  }
 }

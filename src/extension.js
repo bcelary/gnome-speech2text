@@ -101,6 +101,8 @@ export default class Speech2TextExtension extends Extension {
       // Toggle recording via UICoordinator
       if (this.uiCoordinator.isRecording()) {
         await this.uiCoordinator.stopRecording();
+      } else if (this.uiCoordinator.isProcessing()) {
+        await this.uiCoordinator.cancelRecording();
       } else {
         await this.uiCoordinator.startRecording(this.settings);
       }
