@@ -369,7 +369,7 @@ client.stop_server()
 
 ## License
 
-GPL-2.0-or-later (same as the original project)
+MIT
 
 ## Credits
 
