@@ -103,7 +103,17 @@ journalctl -f | grep -E 'gnome-speech2text|whispercpp'
 
 ## Configuration
 
-The service is configured via environment variables:
+The service is configured via environment variables in `~/.config/environment.d/custom-env.conf` (so GNOME Shell can see them):
+
+```bash
+# Create/edit ~/.config/environment.d/custom-env.conf
+mkdir -p ~/.config/environment.d
+nano ~/.config/environment.d/custom-env.conf
+```
+
+After editing, restart GNOME Shell or log out/in.
+
+**Available environment variables:**
 
 ### WHISPER_SERVER_URL
 
