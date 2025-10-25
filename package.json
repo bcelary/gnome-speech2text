@@ -1,6 +1,6 @@
 {
   "name": "gnome-speech2text-extension",
-  "version": "1.0.0",
+  "version": "0.9.1",
   "description": "GNOME Shell extension for speech-to-text using whisper.cpp",
   "type": "module",
   "private": true,
