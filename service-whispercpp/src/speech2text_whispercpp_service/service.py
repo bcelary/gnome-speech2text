@@ -285,6 +285,22 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             self.TextTyped(text, False)
             return False
 
+    @dbus.service.method(DBUS_NAME, out_signature="b")  # type: ignore
+    def ForceReset(self) -> bool:  # noqa: N802
+        """Force reset service state, canceling any active recording.
+
+        This is used for recovery when extension restarts or wakes from sleep
+        and finds the service in an inconsistent state.
+
+        Returns:
+            True if reset successful, False otherwise
+        """
+        try:
+            return self.manager.force_reset()
+        except Exception as e:
+            syslog.syslog(syslog.LOG_ERR, f"ForceReset error: {e}")
+            return False
+
     @dbus.service.method(DBUS_NAME, out_signature="s")  # type: ignore
     def GetServiceStatus(  # noqa: N802
         self,

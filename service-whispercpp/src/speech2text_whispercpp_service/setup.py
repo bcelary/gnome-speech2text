@@ -220,8 +220,15 @@ def stop_running_service() -> bool:
         # Service is running, send SIGTERM via D-Bus
         # This is the clean way - let the service shut down gracefully
         subprocess.run(
-            ["busctl", "--user", "call", DBUS_NAME, "/",
-             "org.freedesktop.DBus.Peer", "Ping"],
+            [
+                "busctl",
+                "--user",
+                "call",
+                DBUS_NAME,
+                "/",
+                "org.freedesktop.DBus.Peer",
+                "Ping",
+            ],
             capture_output=True,
             timeout=2,
         )
@@ -229,8 +236,13 @@ def stop_running_service() -> bool:
         # Now send termination signal
         # The service listens to SIGTERM and shuts down gracefully
         subprocess.run(
-            ["systemctl", "--user", "kill", "--signal=TERM",
-             f"dbus-{DBUS_NAME}.service"],
+            [
+                "systemctl",
+                "--user",
+                "kill",
+                "--signal=TERM",
+                f"dbus-{DBUS_NAME}.service",
+            ],
             capture_output=True,
             timeout=5,
         )

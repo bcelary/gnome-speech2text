@@ -187,6 +187,35 @@ class RecordingManager:
         recording.request_cancel()
         return True
 
+    def force_reset(self) -> bool:
+        """Force reset manager state by canceling any active recording.
+
+        Used for recovery when extension loses sync with service (e.g., sleep/wake).
+        Unlike cancel_recording(), this doesn't require knowing the recording_id.
+
+        Returns:
+            True if reset successful (or no recording active), False on error
+        """
+        try:
+            with self._recording_lock:
+                recording = self._current_recording
+                recording_id = self._current_recording_id
+
+            if recording is None:
+                syslog.syslog(syslog.LOG_INFO, "ForceReset: no active recording")
+                return True
+
+            syslog.syslog(
+                syslog.LOG_WARNING,
+                f"ForceReset: canceling orphaned recording {recording_id}",
+            )
+            recording.request_cancel()
+            return True
+
+        except Exception as e:
+            syslog.syslog(syslog.LOG_ERR, f"ForceReset error: {e}")
+            return False
+
     def get_status(self) -> str:
         """Get service status string.
 

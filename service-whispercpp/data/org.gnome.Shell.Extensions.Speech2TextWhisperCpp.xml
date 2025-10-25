@@ -36,6 +36,10 @@
       <arg direction="out" type="as" name="missing_dependencies" />
     </method>
 
+    <method name="ForceReset">
+      <arg direction="out" type="b" name="success" />
+    </method>
+
     <!-- Signals -->
     <signal name="RecordingStarted">
       <arg type="s" name="recording_id" />
