@@ -67,6 +67,8 @@ class Transcriber:
                     )
                     raise TranscriptionCancelledError("Transcription cancelled by user")
 
+                # TODO: Problematic during cancellation - needs redesigned approach!
+                # The Whisper.cpp server will still be transcribing when we cancel mid-transcription!
                 response = self.client.audio.transcriptions.create(
                     file=af, response_format="json", timeout=self.timeout
                 )
