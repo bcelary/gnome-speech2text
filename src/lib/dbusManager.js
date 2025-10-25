@@ -1,6 +1,4 @@
 import Gio from "gi://Gio";
-import GLib from "gi://GLib";
-import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { Logger } from "./logger.js";
 import { DBUS_NAME, DBUS_PATH } from "./constants.js";
 
@@ -174,11 +172,6 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "TextTyped",
         (proxy, sender, [text, success]) => {
-          if (success) {
-            Main.notify("Speech2Text", "Text inserted successfully!");
-          } else {
-            Main.notify("Speech2Text Error", "Failed to insert text.");
-          }
           handlers.onTextTyped?.(text, success);
         }
       )
@@ -188,11 +181,6 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "TextCopied",
         (proxy, sender, [text, success]) => {
-          if (success) {
-            Main.notify("Speech2Text", "Text copied to clipboard!");
-          } else {
-            Main.notify("Speech2Text Error", "Failed to copy to clipboard.");
-          }
           handlers.onTextCopied?.(text, success);
         }
       )

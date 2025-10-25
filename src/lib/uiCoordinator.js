@@ -198,8 +198,8 @@ export class UICoordinator {
     try {
       await this.dbusManager.cancelRecording(recordingId);
 
-      // Show notification if cancelling during transcription
-      if (wasProcessing) {
+      // Show notification if cancelling during transcription (unless silent mode)
+      if (wasProcessing && !this._isSilentMode()) {
         ToastNotification.showTranscriptionCancelled();
       }
     } catch (error) {
@@ -225,6 +225,14 @@ export class UICoordinator {
   }
 
   /**
+   * Check if current mode is silent
+   * @private
+   */
+  _isSilentMode() {
+    return this.settings?.get_string("processing-ui-mode") === "silent";
+  }
+
+  /**
    * Handle transcription ready signal from service
    */
   handleTranscriptionReady(recordingId, text) {
@@ -244,7 +252,9 @@ export class UICoordinator {
 
     // Handle empty transcription
     if (!text || text.trim().length === 0) {
-      ToastNotification.showNoSpeech();
+      if (!this._isSilentMode()) {
+        ToastNotification.showNoSpeech();
+      }
       this._transitionTo(State.IDLE);
       return;
     }
@@ -466,7 +476,7 @@ export class UICoordinator {
       // Show toast
       ToastNotification.showProcessing();
     } else {
-      // Panel mode: just panel indicator, no modal/toast
+      // Panel or silent mode: just panel indicator, no modal/toast
       if (this.modalDialog.isOpen()) {
         this.modalDialog.close();
       }

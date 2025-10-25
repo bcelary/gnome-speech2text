@@ -14,6 +14,110 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
     });
     window.add(page);
 
+    // User Interface Group
+    const uiGroup = new Adw.PreferencesGroup({
+      title: "User Interface",
+      description: "Choose how recording and processing are displayed",
+    });
+    page.add(uiGroup);
+
+    // Unified Notification Style
+    const notificationStyleRow = new Adw.ComboRow({
+      title: "Progress Display",
+      subtitle: "How to show recording and transcription progress",
+    });
+
+    const notificationStyleList = new Gtk.StringList();
+    notificationStyleList.append("Always (blocks screen)");
+    notificationStyleList.append("Normal (brief messages)");
+    notificationStyleList.append("Errors only");
+    notificationStyleRow.set_model(notificationStyleList);
+
+    // Determine current unified mode based on existing settings
+    // Dialog = both modal, Notification = panel/toast, Silent = panel/silent
+    const currentRecordingUi = settings.get_string("recording-ui-mode");
+    const currentProcessingUi = settings.get_string("processing-ui-mode");
+    let selectedIndex = 0; // Default to Dialog
+    if (currentProcessingUi === "silent") {
+      selectedIndex = 2; // Silent
+    } else if (
+      currentRecordingUi === "panel" ||
+      currentProcessingUi === "panel" ||
+      currentProcessingUi === "toast"
+    ) {
+      selectedIndex = 1; // Notification
+    }
+    notificationStyleRow.set_selected(selectedIndex);
+
+    notificationStyleRow.connect("notify::selected", (widget) => {
+      const selected = widget.get_selected();
+      if (selected === 0) {
+        // Dialog mode: modal for both
+        settings.set_string("recording-ui-mode", "modal");
+        settings.set_string("processing-ui-mode", "modal");
+      } else if (selected === 1) {
+        // Notification mode: panel for recording, toast for processing
+        settings.set_string("recording-ui-mode", "panel");
+        settings.set_string("processing-ui-mode", "toast");
+      } else if (selected === 2) {
+        // Silent mode: panel for recording, silent for processing
+        settings.set_string("recording-ui-mode", "panel");
+        settings.set_string("processing-ui-mode", "silent");
+      }
+    });
+
+    uiGroup.add(notificationStyleRow);
+
+    // Post-Recording Action Group
+    const postRecordingGroup = new Adw.PreferencesGroup({
+      title: "Post-Recording Action",
+      description: "What to do with transcribed text after recording completes",
+    });
+    page.add(postRecordingGroup);
+
+    const postRecordingRow = new Adw.ComboRow({
+      title: "Action",
+      subtitle: "Choose how to handle transcribed text",
+    });
+
+    // Create string list for the dropdown options
+    const stringList = new Gtk.StringList();
+    stringList.append("Show preview dialog");
+    stringList.append("Auto-type text (X11 only)");
+    stringList.append("Copy to clipboard only");
+    stringList.append("Auto-type and copy (X11 only)");
+
+    postRecordingRow.set_model(stringList);
+
+    // Map setting values to dropdown indices
+    const actionToIndex = {
+      preview: 0,
+      type_only: 1,
+      copy_only: 2,
+      type_and_copy: 3,
+    };
+    const indexToAction = [
+      "preview",
+      "type_only",
+      "copy_only",
+      "type_and_copy",
+    ];
+
+    // Set initial value
+    const currentAction = settings.get_string("post-recording-action");
+    postRecordingRow.set_selected(actionToIndex[currentAction] || 0);
+
+    // Connect to changes
+    postRecordingRow.connect("notify::selected", (widget) => {
+      const selectedIndex = widget.get_selected();
+      const action = indexToAction[selectedIndex];
+      if (action) {
+        settings.set_string("post-recording-action", action);
+      }
+    });
+
+    postRecordingGroup.add(postRecordingRow);
+
     // Keyboard Shortcut Group
     const shortcutGroup = new Adw.PreferencesGroup({
       title: "Keyboard Shortcut",
@@ -91,96 +195,6 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
     durationRow.add_suffix(durationBox);
     durationRow.activatable_widget = durationSpinButton;
     durationGroup.add(durationRow);
-
-    // Post-Recording Action Group
-    const postRecordingGroup = new Adw.PreferencesGroup({
-      title: "Post-Recording Action",
-      description: "What to do with transcribed text after recording completes",
-    });
-    page.add(postRecordingGroup);
-
-    const postRecordingRow = new Adw.ComboRow({
-      title: "Action",
-      subtitle: "Choose how to handle transcribed text",
-    });
-
-    // Create string list for the dropdown options
-    const stringList = new Gtk.StringList();
-    stringList.append("Show preview dialog");
-    stringList.append("Auto-type text (X11 only)");
-    stringList.append("Copy to clipboard only");
-    stringList.append("Auto-type and copy (X11 only)");
-
-    postRecordingRow.set_model(stringList);
-
-    // Map setting values to dropdown indices
-    const actionToIndex = {
-      preview: 0,
-      type_only: 1,
-      copy_only: 2,
-      type_and_copy: 3,
-    };
-    const indexToAction = [
-      "preview",
-      "type_only",
-      "copy_only",
-      "type_and_copy",
-    ];
-
-    // Set initial value
-    const currentAction = settings.get_string("post-recording-action");
-    postRecordingRow.set_selected(actionToIndex[currentAction] || 0);
-
-    // Connect to changes
-    postRecordingRow.connect("notify::selected", (widget) => {
-      const selectedIndex = widget.get_selected();
-      const action = indexToAction[selectedIndex];
-      if (action) {
-        settings.set_string("post-recording-action", action);
-      }
-    });
-
-    postRecordingGroup.add(postRecordingRow);
-
-    // User Interface Group
-    const uiGroup = new Adw.PreferencesGroup({
-      title: "User Interface",
-      description: "Choose how recording and processing are displayed",
-    });
-    page.add(uiGroup);
-
-    // Unified Notification Style
-    const notificationStyleRow = new Adw.ComboRow({
-      title: "Notification Style",
-      subtitle: "Blocking dialog pauses screen, notification uses panel indicator",
-    });
-
-    const notificationStyleList = new Gtk.StringList();
-    notificationStyleList.append("Blocking Dialog");
-    notificationStyleList.append("Notification");
-    notificationStyleRow.set_model(notificationStyleList);
-
-    // Determine current unified mode based on existing settings
-    // Dialog = both modal, Notification = both panel/toast
-    const currentRecordingUi = settings.get_string("recording-ui-mode");
-    const currentProcessingUi = settings.get_string("processing-ui-mode");
-    const isNotificationMode = currentRecordingUi === "panel" || currentProcessingUi === "panel" || currentProcessingUi === "toast";
-    notificationStyleRow.set_selected(isNotificationMode ? 1 : 0);
-
-    notificationStyleRow.connect("notify::selected", (widget) => {
-      const isNotification = widget.get_selected() === 1;
-      if (isNotification) {
-        // Notification mode: panel for recording, toast for processing
-        settings.set_string("recording-ui-mode", "panel");
-        settings.set_string("processing-ui-mode", "toast");
-      } else {
-        // Dialog mode: modal for both
-        settings.set_string("recording-ui-mode", "modal");
-        settings.set_string("processing-ui-mode", "modal");
-      }
-    });
-
-    uiGroup.add(notificationStyleRow);
   }
 
   _formatSeconds(totalSeconds) {

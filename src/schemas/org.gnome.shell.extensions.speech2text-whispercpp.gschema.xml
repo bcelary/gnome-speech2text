@@ -37,10 +37,11 @@
                 <choice value="modal"/>
                 <choice value="panel"/>
                 <choice value="toast"/>
+                <choice value="silent"/>
             </choices>
             <default>"modal"</default>
             <summary>Processing UI mode</summary>
-            <description>How to display transcription processing: modal dialog (blocking), panel indicator (non-blocking), or toast notification</description>
+            <description>How to display transcription processing: modal dialog (blocking), panel indicator (non-blocking), toast notification, or silent (errors only)</description>
         </key>
     </schema>
 </schemalist>

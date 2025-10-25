@@ -4,7 +4,6 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 import { Logger } from "./logger.js";
-import { GITHUB_REPO_URL, SERVICE_INSTALL_SCRIPT_URL } from "./constants.js";
 
 const logger = new Logger("UI");
 
@@ -107,26 +106,6 @@ export class UIManager {
       logger.error("Failed to open preferences:", e);
       Main.notify("Speech2Text", "Failed to open preferences window");
     }
-  }
-
-  showErrorNotification(title, message) {
-    Main.notify(title, message);
-  }
-
-  showSuccessNotification(title, message) {
-    Main.notify(title, message);
-  }
-
-  showServiceMissingNotification(errorMessage) {
-    const title = "WhisperCpp Service Not Installed";
-    const message =
-      `${errorMessage || "Service not found"}\n\n` +
-      `Install using the quick installer:\n` +
-      `  curl -fsSL ${SERVICE_INSTALL_SCRIPT_URL} | bash\n\n` +
-      `Documentation:\n` +
-      `  ${GITHUB_REPO_URL}`;
-
-    Main.notify(title, message);
   }
 
   setPanelLabel(text, style = "") {
