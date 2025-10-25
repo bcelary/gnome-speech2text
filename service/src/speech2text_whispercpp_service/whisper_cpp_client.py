@@ -8,6 +8,7 @@ It handles server health checking, auto-starting, and audio transcription.
 
 import re
 import subprocess
+import threading
 import time
 from pathlib import Path
 from typing import Any, BinaryIO, Optional, Union
@@ -347,6 +348,7 @@ class TranscriptionResource:
         response_format: str = "text",
         language: Optional[str] = None,
         timeout: float = 30.0,
+        cancel_event: Optional[threading.Event] = None,
     ) -> Union[str, dict[str, Any]]:
         """Transcribe audio file using whisper.cpp server
 
@@ -358,6 +360,7 @@ class TranscriptionResource:
             response_format: Response format - "text", "json", "verbose_json", "srt", "vtt"
             language: Language code (optional, whisper.cpp will auto-detect if not provided)
             timeout: Request timeout in seconds
+            cancel_event: Optional threading.Event to signal cancellation
 
         Returns:
             str: Transcribed text (for response_format="text")
@@ -365,11 +368,29 @@ class TranscriptionResource:
         Raises:
             requests.exceptions.RequestException: On HTTP errors
             ValueError: If response is empty or invalid
+            RuntimeError: If cancelled via cancel_event
 
         Example:
             >>> with open("audio.wav", "rb") as f:
             ...     text = client.audio.transcriptions.create(file=f)
         """
+        # If no cancel_event, use standard blocking request
+        if cancel_event is None:
+            return self._create_blocking(file, response_format, language, timeout)
+
+        # Use cancellable request with threading
+        return self._create_cancellable(
+            file, response_format, language, timeout, cancel_event
+        )
+
+    def _create_blocking(
+        self,
+        file: BinaryIO,
+        response_format: str,
+        language: Optional[str],
+        timeout: float,
+    ) -> Union[str, dict[str, Any]]:
+        """Standard blocking transcription request (internal)."""
         # Prepare multipart form data
         file.seek(0)  # Ensure we're at the start of the file
         files = {"file": ("audio.wav", file, "audio/wav")}
@@ -391,23 +412,7 @@ class TranscriptionResource:
             )
             response.raise_for_status()
 
-            # Try to parse as JSON first (all errors are returned as JSON)
-            try:
-                result: dict[str, Any] = response.json()
-
-                # Check if server returned an error
-                if "error" in result:
-                    error_msg = result["error"]
-                    raise ValueError(f"Whisper server returned error: {error_msg}")
-
-                # Successfully parsed JSON - return it as-is
-                # Empty text field is valid (no speech detected)
-                return result
-
-            except (ValueError, KeyError, TypeError):
-                # JSON parsing failed - response is plain text (text/srt/vtt format)
-                # Empty string is valid (no speech detected)
-                return response.text
+            return self._parse_response(response)
 
         except requests.exceptions.Timeout as e:
             # Timeout - transcription took too long
@@ -429,3 +434,123 @@ class TranscriptionResource:
                 ) from e
             else:
                 raise
+
+    def _create_cancellable(
+        self,
+        file: BinaryIO,
+        response_format: str,
+        language: Optional[str],
+        timeout: float,
+        cancel_event: threading.Event,
+    ) -> Union[str, dict[str, Any]]:
+        """Cancellable transcription request using threading (internal).
+
+        This method runs the HTTP request in a separate thread and monitors
+        the cancel_event. If cancellation is requested, it closes the session,
+        which causes the whisper.cpp server's abort_callback to fire and stop
+        processing immediately.
+        """
+        # Check if already cancelled
+        if cancel_event.is_set():
+            raise RuntimeError("Transcription cancelled before start")
+
+        # Shared state between threads
+        result_container: dict[str, Any] = {}
+        exception_container: dict[str, Exception] = {}
+        session = requests.Session()
+
+        def request_thread() -> None:
+            """Worker thread that makes the HTTP request."""
+            try:
+                # Prepare multipart form data
+                file.seek(0)
+                files = {"file": ("audio.wav", file, "audio/wav")}
+
+                data: dict[str, str] = {
+                    "response_format": response_format,
+                }
+
+                if language:
+                    data["language"] = language
+
+                # Make request using session (so we can close it from main thread)
+                response = session.post(
+                    f"{self._client.base_url}/inference",
+                    files=files,
+                    data=data,
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+
+                # Store result
+                result_container["response"] = self._parse_response(response)
+
+            except Exception as e:
+                # Store exception to re-raise in main thread
+                exception_container["error"] = e
+
+        # Start request thread
+        thread = threading.Thread(target=request_thread, daemon=True)
+        thread.start()
+
+        # Monitor cancellation while waiting for thread
+        poll_interval = 0.1  # seconds
+        while thread.is_alive():
+            if cancel_event.is_set():
+                # Cancel requested - close session to abort request
+                # This causes whisper.cpp server's abort_callback to fire
+                try:
+                    session.close()
+                except Exception:
+                    pass  # Ignore errors during close
+                raise RuntimeError("Transcription cancelled by user")
+
+            thread.join(timeout=poll_interval)
+
+        # Thread finished - check for errors
+        if "error" in exception_container:
+            error = exception_container["error"]
+            # Enhance error messages
+            if isinstance(error, requests.exceptions.Timeout):
+                raise requests.exceptions.Timeout(
+                    f"Transcription timeout after {timeout}s. "
+                    "Audio too long or model too slow. "
+                    "Increase WHISPER_TIMEOUT or use faster model."
+                ) from error
+            elif isinstance(error, requests.exceptions.HTTPError):
+                if error.response is not None and error.response.status_code == 404:
+                    raise requests.exceptions.HTTPError(
+                        "Transcription endpoint not found. "
+                        "Check that whisper.cpp server is running and accessible."
+                    ) from error
+                elif error.response is not None and error.response.status_code == 401:
+                    raise requests.exceptions.HTTPError(
+                        "Authentication failed (should not happen with whisper.cpp)"
+                    ) from error
+            raise error
+
+        # Return result
+        if "response" in result_container:
+            return result_container["response"]
+        else:
+            raise RuntimeError("Request thread finished without result or error")
+
+    def _parse_response(self, response: requests.Response) -> Union[str, dict[str, Any]]:
+        """Parse HTTP response from whisper.cpp server (internal)."""
+        # Try to parse as JSON first (all errors are returned as JSON)
+        try:
+            result: dict[str, Any] = response.json()
+
+            # Check if server returned an error
+            if "error" in result:
+                error_msg = result["error"]
+                raise ValueError(f"Whisper server returned error: {error_msg}")
+
+            # Successfully parsed JSON - return it as-is
+            # Empty text field is valid (no speech detected)
+            return result
+
+        except (ValueError, KeyError, TypeError):
+            # JSON parsing failed - response is plain text (text/srt/vtt format)
+            # Empty string is valid (no speech detected)
+            return response.text

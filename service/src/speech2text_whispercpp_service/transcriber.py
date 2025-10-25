@@ -67,10 +67,13 @@ class Transcriber:
                     )
                     raise TranscriptionCancelledError("Transcription cancelled by user")
 
-                # TODO: Problematic during cancellation - needs redesigned approach!
-                # The Whisper.cpp server will still be transcribing when we cancel mid-transcription!
+                # Make cancellable request - if cancel_event is set during transcription,
+                # the HTTP connection will be closed, triggering whisper.cpp's abort_callback
                 response = self.client.audio.transcriptions.create(
-                    file=af, response_format="json", timeout=self.timeout
+                    file=af,
+                    response_format="json",
+                    timeout=self.timeout,
+                    cancel_event=cancel_event,
                 )
 
             # Check cancellation after request completes
@@ -96,6 +99,15 @@ class Transcriber:
         except TranscriptionCancelledError:
             # Re-raise cancellation exceptions
             raise
+        except RuntimeError as e:
+            # Check if this is a cancellation from the client
+            if "cancelled" in str(e).lower():
+                syslog.syslog(syslog.LOG_INFO, f"Transcription cancelled: {e}")
+                raise TranscriptionCancelledError(str(e)) from e
+            # Otherwise treat as regular error
+            error_msg = self._enhance_error_message(e)
+            syslog.syslog(syslog.LOG_ERR, f"Transcription failed: {error_msg}")
+            raise Exception(error_msg) from e
         except Exception as e:
             error_msg = self._enhance_error_message(e)
             syslog.syslog(syslog.LOG_ERR, f"Transcription failed: {error_msg}")
