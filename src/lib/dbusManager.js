@@ -28,6 +28,9 @@ const Speech2TextInterface = `
       <arg direction="in" type="b" name="copy_to_clipboard" />
       <arg direction="out" type="b" name="success" />
     </method>
+    <method name="ForceReset">
+      <arg direction="out" type="b" name="success" />
+    </method>
     <method name="GetServiceStatus">
       <arg direction="out" type="s" name="status" />
     </method>
@@ -68,7 +71,8 @@ export class DBusManager {
     this.isInitialized = false;
     this.lastConnectionCheck = 0;
     this.connectionCheckInterval = 10000; // Check every 10 seconds
-    this.serviceStartTimeoutId = null;
+    this.nameOwnerChangedId = null;
+    this.onServiceDied = null; // Callback for when service dies
   }
 
   async initialize() {
@@ -94,6 +98,10 @@ export class DBusManager {
       try {
         await this.dbusProxy.GetServiceStatusAsync();
         this.isInitialized = true;
+
+        // Monitor service lifecycle - detect when service dies
+        this._setupServiceMonitoring();
+
         logger.info("D-Bus proxy initialized and service is reachable");
         return true;
       } catch (serviceError) {
@@ -209,6 +217,52 @@ export class DBusManager {
     this.signalConnections = [];
   }
 
+  _setupServiceMonitoring() {
+    if (!this.dbusProxy) return;
+
+    // Disconnect previous monitor if exists
+    if (this.nameOwnerChangedId) {
+      this.dbusProxy.disconnect(this.nameOwnerChangedId);
+      this.nameOwnerChangedId = null;
+    }
+
+    // Monitor g-name-owner property - triggers when service dies/restarts
+    this.nameOwnerChangedId = this.dbusProxy.connect(
+      "notify::g-name-owner",
+      (proxy) => {
+        const owner = proxy.g_name_owner;
+        if (!owner) {
+          logger.warn("Service died - name owner lost");
+          if (this.onServiceDied) {
+            this.onServiceDied();
+          }
+        } else {
+          logger.info("Service owner changed:", owner);
+        }
+      }
+    );
+  }
+
+  setServiceDiedCallback(callback) {
+    this.onServiceDied = callback;
+  }
+
+  async forceReset() {
+    if (!this.dbusProxy) {
+      logger.debug("Cannot force reset: no D-Bus proxy");
+      return false;
+    }
+
+    try {
+      const [success] = await this.dbusProxy.ForceResetAsync();
+      logger.info(`ForceReset called, success: ${success}`);
+      return success;
+    } catch (e) {
+      logger.error(`ForceReset error: ${e}`);
+      return false;
+    }
+  }
+
   async checkServiceStatus() {
     if (!this.dbusProxy) {
       return {
@@ -231,7 +285,7 @@ export class DBusManager {
       }
 
       if (status.startsWith("ready:")) {
-        return { available: true };
+        return { available: true, status };
       }
 
       if (status.startsWith("error:")) {
@@ -361,82 +415,23 @@ export class DBusManager {
     const isValid = await this.validateConnection();
     if (!isValid) {
       logger.info("Reinitializing D-Bus connection...");
-      const initialized = await this.initialize();
-
-      // If initialization failed, try to activate the service via D-Bus
-      if (!initialized) {
-        logger.info("Service not available, triggering D-Bus activation...");
-        const serviceActivated = await this._activateService();
-        if (serviceActivated) {
-          return await this.initialize();
-        }
-      }
-
-      return initialized;
+      // initialize() already handles D-Bus auto-activation via GetServiceStatusAsync()
+      // No need for separate activation attempt
+      return await this.initialize();
     }
     return true;
-  }
-
-  async _activateService() {
-    try {
-      logger.info("Activating Speech2Text service via D-Bus...");
-
-      // D-Bus will automatically start the service when we try to connect to it
-      // We just need to wait a bit for the service to register
-      await new Promise((resolve) => {
-        this.serviceStartTimeoutId = GLib.timeout_add(
-          GLib.PRIORITY_DEFAULT,
-          3000,
-          () => {
-            this.serviceStartTimeoutId = null;
-            resolve();
-            return false;
-          }
-        );
-      });
-
-      // Verify service is now available
-      try {
-        const testProxy = Gio.DBusProxy.new_sync(
-          Gio.DBus.session,
-          Gio.DBusProxyFlags.NONE,
-          null,
-          DBUS_NAME,
-          DBUS_PATH,
-          DBUS_NAME,
-          null
-        );
-
-        const [status] = testProxy.GetServiceStatusSync();
-        if (status.startsWith("ready:")) {
-          logger.info("Service activated successfully via D-Bus");
-          return true;
-        } else {
-          logger.info(`Service activated but not ready: ${status}`);
-          return false;
-        }
-      } catch (e) {
-        logger.info(
-          "Service not available after D-Bus activation attempt:",
-          e.message
-        );
-        return false;
-      }
-    } catch (e) {
-      logger.error(`Failed to activate service: ${e}`);
-      return false;
-    }
   }
 
   destroy() {
     this.disconnectSignals();
 
-    // Clean up any pending timeout
-    if (this.serviceStartTimeoutId) {
-      GLib.Source.remove(this.serviceStartTimeoutId);
-      this.serviceStartTimeoutId = null;
+    // Clean up service monitoring
+    if (this.nameOwnerChangedId && this.dbusProxy) {
+      this.dbusProxy.disconnect(this.nameOwnerChangedId);
+      this.nameOwnerChangedId = null;
     }
 
+    this.onServiceDied = null;
     this.dbusProxy = null;
     this.isInitialized = false;
     this.lastConnectionCheck = 0;

@@ -12,6 +12,8 @@ export class UIManager {
   constructor(extensionCore) {
     this.extensionCore = extensionCore;
     this.icon = null;
+    this.iconWidget = null;
+    this.label = null;
     this._buttonPressSignalId = null;
   }
 
@@ -19,12 +21,27 @@ export class UIManager {
     // Create the panel button
     this.icon = new PanelMenu.Button(0.0, "Speech2Text Indicator");
 
+    // Create box container for icon + label
+    const box = new St.BoxLayout({
+      style_class: "panel-status-menu-box",
+    });
+
     // Set up the icon
-    const icon = new St.Icon({
+    this.iconWidget = new St.Icon({
       icon_name: "radio-checked-symbolic",
       style_class: "system-status-icon",
     });
-    this.icon.add_child(icon);
+    box.add_child(this.iconWidget);
+
+    // Create label for panel indicator countdown
+    this.label = new St.Label({
+      text: "",
+      y_align: Clutter.ActorAlign.CENTER,
+    });
+    box.add_child(this.label);
+
+    // Add box to panel button
+    this.icon.add_child(box);
 
     // Create popup menu
     this.createPopupMenu();
@@ -112,7 +129,23 @@ export class UIManager {
     Main.notify(title, message);
   }
 
+  setPanelLabel(text, style = "") {
+    if (this.label) {
+      this.label.set_text(text);
+      this.label.set_style(style);
+    }
+  }
+
+  clearPanelLabel() {
+    if (this.label) {
+      this.label.set_text("");
+      this.label.set_style("");
+    }
+  }
+
   cleanup() {
+    // Clear panel label
+    this.clearPanelLabel();
     // Disconnect signal handler
     if (this._buttonPressSignalId && this.icon) {
       try {

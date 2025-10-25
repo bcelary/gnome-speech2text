@@ -141,6 +141,46 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
     });
 
     postRecordingGroup.add(postRecordingRow);
+
+    // User Interface Group
+    const uiGroup = new Adw.PreferencesGroup({
+      title: "User Interface",
+      description: "Choose how recording and processing are displayed",
+    });
+    page.add(uiGroup);
+
+    // Unified Notification Style
+    const notificationStyleRow = new Adw.ComboRow({
+      title: "Notification Style",
+      subtitle: "Blocking dialog pauses screen, notification uses panel indicator",
+    });
+
+    const notificationStyleList = new Gtk.StringList();
+    notificationStyleList.append("Blocking Dialog");
+    notificationStyleList.append("Notification");
+    notificationStyleRow.set_model(notificationStyleList);
+
+    // Determine current unified mode based on existing settings
+    // Dialog = both modal, Notification = both panel/toast
+    const currentRecordingUi = settings.get_string("recording-ui-mode");
+    const currentProcessingUi = settings.get_string("processing-ui-mode");
+    const isNotificationMode = currentRecordingUi === "panel" || currentProcessingUi === "panel" || currentProcessingUi === "toast";
+    notificationStyleRow.set_selected(isNotificationMode ? 1 : 0);
+
+    notificationStyleRow.connect("notify::selected", (widget) => {
+      const isNotification = widget.get_selected() === 1;
+      if (isNotification) {
+        // Notification mode: panel for recording, toast for processing
+        settings.set_string("recording-ui-mode", "panel");
+        settings.set_string("processing-ui-mode", "toast");
+      } else {
+        // Dialog mode: modal for both
+        settings.set_string("recording-ui-mode", "modal");
+        settings.set_string("processing-ui-mode", "modal");
+      }
+    });
+
+    uiGroup.add(notificationStyleRow);
   }
 
   _formatSeconds(totalSeconds) {

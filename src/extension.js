@@ -1,6 +1,6 @@
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 import { UIManager } from "./lib/uiManager.js";
-import { RecordingController } from "./lib/recordingController.js";
+import { UICoordinator } from "./lib/uiCoordinator.js";
 import { DBusManager } from "./lib/dbusManager.js";
 import { KeybindingManager } from "./lib/keybindingManager.js";
 import { Logger } from "./lib/logger.js";
@@ -14,7 +14,7 @@ export default class Speech2TextExtension extends Extension {
 
     this.settings = null;
     this.uiManager = null;
-    this.recordingController = null;
+    this.uiCoordinator = null;
     this.dbusManager = null;
     this.keybindingManager = null;
   }
@@ -29,33 +29,55 @@ export default class Speech2TextExtension extends Extension {
     this.uiManager = new UIManager(this);
     this.uiManager.initialize();
 
-    this.recordingController = new RecordingController(
-      this.uiManager,
-      this.dbusManager
-    );
-    this.recordingController.initialize();
+    this.uiCoordinator = new UICoordinator(this.uiManager, this.dbusManager);
+    this.uiCoordinator.initialize();
+
+    // Setup automatic recovery when service dies
+    this.dbusManager.setServiceDiedCallback(() => {
+      logger.warn("Service died unexpectedly, forcing UI reset");
+      this.uiCoordinator.forceReset();
+    });
 
     this.keybindingManager = new KeybindingManager(this);
     this.keybindingManager.setupKeybinding();
 
     this._setupSignalHandlers();
 
+    // Always reset service state on startup (cleans orphaned recordings from sleep/wake)
+    await this._resetServiceState();
+
     logger.info("Extension enabled successfully");
+  }
+
+  async _resetServiceState() {
+    try {
+      // Reset service state (UI already initialized to IDLE)
+      const success = await this.dbusManager.forceReset();
+      if (success) {
+        logger.debug("Service state reset on startup");
+      }
+    } catch (error) {
+      logger.debug("Error resetting service state:", error.message);
+      // Non-fatal - continue with extension initialization
+    }
   }
 
   _setupSignalHandlers() {
     this.dbusManager.connectSignals({
       onTranscriptionReady: (recordingId, text) => {
-        this.recordingController.handleTranscriptionReady(recordingId, text);
+        this.uiCoordinator.handleTranscriptionReady(recordingId, text);
       },
       onRecordingError: (recordingId, errorMessage) => {
-        this.recordingController.handleRecordingError(
-          recordingId,
-          errorMessage
-        );
+        this.uiCoordinator.handleRecordingError(recordingId, errorMessage);
       },
-      onRecordingStopped: (recordingId, reason) => {
-        this.recordingController.handleRecordingStopped(recordingId, reason);
+      onRecordingStopped: (recordingId, _reason) => {
+        this.uiCoordinator.handleRecordingCompleted(recordingId);
+      },
+      onTextTyped: () => {
+        this.uiCoordinator.handleTextTyped();
+      },
+      onTextCopied: () => {
+        this.uiCoordinator.handleTextCopied();
       },
     });
   }
@@ -76,27 +98,12 @@ export default class Speech2TextExtension extends Extension {
         return;
       }
 
-      // Ensure D-Bus connection is valid
-      const connectionReady = await this.dbusManager.ensureConnection();
-      if (!connectionReady) {
-        this.uiManager.showErrorNotification(
-          "Speech2Text",
-          "Service is not available. Please check if the service is running."
-        );
-        return;
+      // Toggle recording via UICoordinator
+      if (this.uiCoordinator.isRecording()) {
+        await this.uiCoordinator.stopRecording();
+      } else {
+        await this.uiCoordinator.startRecording(this.settings);
       }
-
-      // Check service status
-      const serviceStatus = await this.dbusManager.checkServiceStatus();
-      if (!serviceStatus.available) {
-        this.uiManager.showErrorNotification(
-          "Speech2Text",
-          serviceStatus.error || "Service is not available."
-        );
-        return;
-      }
-
-      await this.recordingController.toggleRecording(this.settings);
     } catch (error) {
       logger.error("Error in toggleRecording:", error);
       this.uiManager.showErrorNotification(
@@ -123,13 +130,14 @@ export default class Speech2TextExtension extends Extension {
       }
 
       if (this.uiManager && this.dbusManager) {
-        if (this.recordingController) {
-          this.recordingController.cleanup();
+        if (this.uiCoordinator) {
+          this.uiCoordinator.cleanup();
         }
-        this.recordingController = new RecordingController(
+        this.uiCoordinator = new UICoordinator(
           this.uiManager,
           this.dbusManager
         );
+        this.uiCoordinator.initialize();
       }
 
       if (this.settings && !this.keybindingManager) {
@@ -158,10 +166,10 @@ export default class Speech2TextExtension extends Extension {
       this.keybindingManager = null;
     }
 
-    if (this.recordingController) {
-      logger.debug("Cleaning up recording controller");
-      this.recordingController.cleanup();
-      this.recordingController = null;
+    if (this.uiCoordinator) {
+      logger.debug("Cleaning up UI coordinator");
+      this.uiCoordinator.cleanup();
+      this.uiCoordinator = null;
     }
 
     if (this.uiManager) {

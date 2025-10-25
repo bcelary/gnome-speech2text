@@ -23,5 +23,24 @@
             <summary>Post-recording action</summary>
             <description>What to do with transcribed text after recording completes. Options: "preview" (show dialog), "type_only" (auto-type, X11 only), "copy_only" (copy to clipboard), "type_and_copy" (both, X11 only). On Wayland, auto-type options will show preview instead.</description>
         </key>
+        <key name="recording-ui-mode" type="s">
+            <choices>
+                <choice value="modal"/>
+                <choice value="panel"/>
+            </choices>
+            <default>"modal"</default>
+            <summary>Recording UI mode</summary>
+            <description>How to display recording indicator: modal dialog (blocking) or panel indicator (non-blocking)</description>
+        </key>
+        <key name="processing-ui-mode" type="s">
+            <choices>
+                <choice value="modal"/>
+                <choice value="panel"/>
+                <choice value="toast"/>
+            </choices>
+            <default>"modal"</default>
+            <summary>Processing UI mode</summary>
+            <description>How to display transcription processing: modal dialog (blocking), panel indicator (non-blocking), or toast notification</description>
+        </key>
     </schema>
 </schemalist>
