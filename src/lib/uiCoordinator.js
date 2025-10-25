@@ -355,7 +355,9 @@ export class UICoordinator {
     const progressDisplay =
       this.settings?.get_string("progress-display") || "normal";
 
-    logger.debug(`Rendering state: ${this.currentState}, progress: ${progressDisplay}`);
+    logger.debug(
+      `Rendering state: ${this.currentState}, progress: ${progressDisplay}`
+    );
 
     switch (this.currentState) {
       case State.IDLE:

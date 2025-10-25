@@ -18,7 +18,7 @@
  */
 
 // Toggle debug logging here (default: false)
-const DEBUG = true;
+const DEBUG = false;
 
 export class Logger {
   constructor(component) {
