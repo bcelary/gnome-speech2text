@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "speech2text-whispercpp-service"  # Keep in sync with __init__.py:PACKAGE_NAME
-version = "0.9.1"
+version = "0.9.2"
 description = "whisper.cpp-based D-Bus service providing speech-to-text functionality for GNOME Shell"
 readme = "README.md"
 license = {text = "GPL-2.0-or-later"}

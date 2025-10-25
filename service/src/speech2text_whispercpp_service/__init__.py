@@ -6,6 +6,6 @@ extension using whisper.cpp server for local speech recognition.
 Forked from kavehtehrani/gnome-speech2text
 """
 
-__version__ = "0.9.1"
+__version__ = "0.9.2"
 __author__ = "Bartek Celary"
 __email__ = "bcelary@gmail.com"
