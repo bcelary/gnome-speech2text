@@ -213,8 +213,25 @@ class WhisperCppClient:
                 str(model_path),
                 "-l",
                 self.language,
-                "-nc",  # no-context: prevents deadlock after multiple requests (issue #6, whisper.cpp #3358)
             ]
+
+            # Check if -nc/--no-context flag is supported (v1.7.6+, removed in later versions)
+            # no-context: prevents deadlock after multiple requests (issue #6, whisper.cpp #3358)
+            try:
+                help_output = subprocess.run(
+                    ["whisper-server", "-h"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+                # Check if line starts with -nc and contains --no-context
+                for line in help_output.stdout.splitlines():
+                    stripped = line.lstrip()
+                    if stripped.startswith("-nc") and "--no-context" in line:
+                        cmd.append("-nc")
+                        break
+            except Exception:
+                pass  # If help check fails, continue without -nc
 
             # Add VAD flags if VAD model is specified
             if self.vad_model:
