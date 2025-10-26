@@ -4,6 +4,8 @@
 
 Local speech-to-text for GNOME Shell. No cloud. No APIs.
 
+Status indicator in system tray (top-right panel) always shows recording/processing state.
+
 ## Choose Your Experience
 
 - **Minimal** - Errors only, stay-out-of-the-way mode
@@ -11,13 +13,11 @@ Local speech-to-text for GNOME Shell. No cloud. No APIs.
 - **Focused** - Modal during recording only, transcription in background
 - **Blocking** - Full-screen modal, focused workflow (blocks during recording + transcription)
 
-Status indicator in system tray (top-right panel) always shows recording/processing state.
-
 ## Features
 
 - Keyboard shortcut (Super+Alt+Space) or tray icon
 - Multi-language support
-- Auto text insertion (X11 onlt) or clipboard
+- Auto text insertion (X11 only) or clipboard
 - Customizable models and Voice Activity Detection
 - Fast local transcription (no cloud/APIs)
 
