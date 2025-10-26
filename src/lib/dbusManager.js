@@ -65,6 +65,7 @@ export class DBusManager {
     this.logger = new Logger("DBus");
     this.dbusProxy = null;
     this.signalConnections = [];
+    this.signalHandlers = null; // Store handlers for reconnection after service restart
     this.isInitialized = false;
     this.lastConnectionCheck = 0;
     this.connectionCheckInterval = 10000; // Check every 10 seconds
@@ -102,6 +103,15 @@ export class DBusManager {
         this._setupServiceMonitoring();
 
         this.logger.info("D-Bus proxy initialized and service is reachable");
+
+        // Reconnect signals if they were previously connected
+        if (this.signalHandlers) {
+          this.logger.debug(
+            "Reconnecting signal handlers after proxy reinitialization"
+          );
+          this.connectSignals(this.signalHandlers);
+        }
+
         return true;
       } catch (serviceError) {
         this.logger.debug(
@@ -125,6 +135,9 @@ export class DBusManager {
 
     // Clear existing connections
     this.disconnectSignals();
+
+    // Store handlers for reconnection after service restart
+    this.signalHandlers = handlers;
 
     // Connect to D-Bus signals
     this.signalConnections.push(
