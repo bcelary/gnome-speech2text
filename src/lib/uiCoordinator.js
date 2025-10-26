@@ -158,9 +158,7 @@ export class UICoordinator {
       return true;
     } catch (error) {
       this.logger.error("Failed to start recording:", error);
-      this.toast.showError(
-        "Failed to start recording. Please try again."
-      );
+      this.toast.showError("Failed to start recording. Please try again.");
       return false;
     }
   }
@@ -169,7 +167,9 @@ export class UICoordinator {
    * Stop recording manually
    */
   async stopRecording() {
-    this.logger.debug(`stopRecording called, current state: ${this.currentState}`);
+    this.logger.debug(
+      `stopRecording called, current state: ${this.currentState}`
+    );
     if (this.currentState !== State.RECORDING) {
       this.logger.debug(
         `Cannot stop recording from state: ${this.currentState}`
@@ -192,7 +192,9 @@ export class UICoordinator {
    * Cancel recording/processing
    */
   async cancelRecording() {
-    this.logger.debug(`cancelRecording called, current state: ${this.currentState}`);
+    this.logger.debug(
+      `cancelRecording called, current state: ${this.currentState}`
+    );
     if (
       this.currentState === State.IDLE ||
       this.currentState === State.PREVIEW
@@ -226,7 +228,9 @@ export class UICoordinator {
    * Handle recording completed signal from service
    */
   handleRecordingCompleted(recordingId) {
-    this.logger.debug(`handleRecordingCompleted: ${recordingId}, current state: ${this.currentState}`);
+    this.logger.debug(
+      `handleRecordingCompleted: ${recordingId}, current state: ${this.currentState}`
+    );
     if (recordingId !== this.currentRecordingId) {
       this.logger.debug("Ignoring recording_completed for different recording");
       return;
@@ -252,7 +256,9 @@ export class UICoordinator {
    * Handle transcription ready signal from service
    */
   handleTranscriptionReady(recordingId, text) {
-    this.logger.debug(`handleTranscriptionReady: ${recordingId}, text length: ${text?.length || 0}, current state: ${this.currentState}`);
+    this.logger.debug(
+      `handleTranscriptionReady: ${recordingId}, text length: ${text?.length || 0}, current state: ${this.currentState}`
+    );
     if (recordingId !== this.currentRecordingId) {
       this.logger.debug("Ignoring transcription_ready for different recording");
       return;
@@ -302,7 +308,9 @@ export class UICoordinator {
    * Handle recording error signal from service
    */
   handleRecordingError(recordingId, errorMessage) {
-    this.logger.info(`handleRecordingError: ${recordingId}, error: ${errorMessage}`);
+    this.logger.info(
+      `handleRecordingError: ${recordingId}, error: ${errorMessage}`
+    );
     if (recordingId !== this.currentRecordingId) {
       this.logger.debug("Ignoring recording_error for different recording");
       return;

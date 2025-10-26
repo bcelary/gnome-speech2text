@@ -473,7 +473,9 @@ export class ModalDialog {
    * @param {number} progress - Progress 0-1
    */
   showRecording(timeText, progress) {
-    this.logger.debug(`showRecording: ${timeText}, progress=${progress.toFixed(2)}`);
+    this.logger.debug(
+      `showRecording: ${timeText}, progress=${progress.toFixed(2)}`
+    );
     this._hideAllContainers();
 
     // Update dynamic content

@@ -331,7 +331,9 @@ export class DBusManager {
   }
 
   async startRecording(duration, postRecordingAction) {
-    this.logger.debug(`startRecording: duration=${duration}, action=${postRecordingAction}`);
+    this.logger.debug(
+      `startRecording: duration=${duration}, action=${postRecordingAction}`
+    );
     const connectionReady = await this.ensureConnection();
     if (!connectionReady || !this.dbusProxy) {
       throw new Error("D-Bus connection not available");

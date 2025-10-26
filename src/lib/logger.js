@@ -33,12 +33,15 @@ const LOG_LEVELS = {
 
 // Read log level from environment variable once at module load
 const envLogLevel = GLib.getenv("S2T_LOG_LEVEL") || "info";
-const LOG_LEVEL = LOG_LEVELS[envLogLevel.toLowerCase()] !== undefined
-  ? envLogLevel.toLowerCase()
-  : "info";
+const LOG_LEVEL =
+  LOG_LEVELS[envLogLevel.toLowerCase()] !== undefined
+    ? envLogLevel.toLowerCase()
+    : "info";
 
 // Log detected level at module initialization
-console.log(`[S2T-WC:Logger] Log level: ${LOG_LEVEL} (env S2T_LOG_LEVEL=${envLogLevel || 'not set'})`);
+console.log(
+  `[S2T-WC:Logger] Log level: ${LOG_LEVEL} (env S2T_LOG_LEVEL=${envLogLevel || "not set"})`
+);
 
 export class Logger {
   constructor(component) {
