@@ -1,10 +1,7 @@
 import Adw from "gi://Adw";
 import Gtk from "gi://Gtk";
 import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
-import {
-  RECORDING_DURATION,
-  GITHUB_REPO_URL,
-} from "./lib/constants.js";
+import { RECORDING_DURATION, GITHUB_REPO_URL } from "./lib/constants.js";
 
 export default class Speech2TextPreferences extends ExtensionPreferences {
   fillPreferencesWindow(window) {
