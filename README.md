@@ -15,7 +15,8 @@ Status indicator in system tray (top-right panel) always shows recording/process
 
 ## Features
 
-- Keyboard shortcut (Super+Alt+Space) or tray icon
+- Tray icon presents status (Idle/Recording/Transcribing)
+- Keyboard shortcut (Super+Alt+Space)
 - Multi-language support
 - Auto text insertion (X11 only) or clipboard
 - Customizable models and Voice Activity Detection
