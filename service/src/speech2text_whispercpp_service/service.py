@@ -6,6 +6,7 @@ This service provides speech-to-text functionality via D-Bus using a local
 whisper.cpp server with OpenAI-compatible API.
 """
 
+import argparse
 import os
 import signal
 import sys
@@ -80,8 +81,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             on_action_signal=self._on_action_result,
         )
 
-        # Initialize syslog
-        syslog.openlog(SERVICE_EXECUTABLE, syslog.LOG_PID, syslog.LOG_USER)
+        # Note: syslog already opened and configured in main()
         syslog.syslog(
             syslog.LOG_INFO, "Speech2Text D-Bus service started (whisper.cpp backend)"
         )
@@ -483,6 +483,37 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
 def main() -> int:
     """Main function to start the D-Bus service."""
     try:
+        # Parse command line arguments for log level
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("--debug", action="store_true")
+        args, _ = parser.parse_known_args()
+
+        # Configure syslog log level
+        # Map level names to syslog constants
+        log_level_map = {
+            "debug": syslog.LOG_DEBUG,
+            "info": syslog.LOG_INFO,
+            "warning": syslog.LOG_WARNING,
+            "error": syslog.LOG_ERR,
+        }
+
+        # Determine log level: --debug flag overrides env var
+        log_level_env = os.environ.get("S2T_SERVICE_LOG_LEVEL", "").lower()
+        if args.debug:
+            log_level = syslog.LOG_DEBUG
+        elif log_level_env in log_level_map:
+            log_level = log_level_map[log_level_env]
+        else:
+            log_level = syslog.LOG_INFO  # Default
+
+        # Set log mask to filter messages
+        syslog.openlog(SERVICE_EXECUTABLE, syslog.LOG_PID, syslog.LOG_USER)
+        syslog.setlogmask(syslog.LOG_UPTO(log_level))
+
+        level_names = {v: k.upper() for k, v in log_level_map.items()}
+        level_name = level_names.get(log_level, "INFO")
+        syslog.syslog(syslog.LOG_INFO, f"Log level set to {level_name}")
+
         service = Speech2TextService()
 
         # Set up signal handlers for graceful shutdown

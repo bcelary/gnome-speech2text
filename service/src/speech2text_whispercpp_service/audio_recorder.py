@@ -85,9 +85,9 @@ class AudioRecorder:
         )
 
         syslog.syslog(
-            syslog.LOG_INFO, f"FFmpeg process started with PID: {self.process.pid}"
+            syslog.LOG_DEBUG, f"FFmpeg process started with PID: {self.process.pid}"
         )
-        syslog.syslog(syslog.LOG_INFO, f"FFmpeg command: {' '.join(cmd)}")
+        syslog.syslog(syslog.LOG_DEBUG, f"FFmpeg command: {' '.join(cmd)}")
 
         # Check if process started successfully
         time.sleep(FFMPEG_STARTUP_DELAY)
@@ -154,19 +154,19 @@ class AudioRecorder:
         # Give filesystem time to flush
         time.sleep(FILESYSTEM_FLUSH_DELAY)
 
-        syslog.syslog(syslog.LOG_INFO, f"Validating audio file: {self.audio_file}")
+        syslog.syslog(syslog.LOG_DEBUG, f"Validating audio file: {self.audio_file}")
 
         for attempt in range(AUDIO_VALIDATION_ATTEMPTS):
             if self.audio_file.exists():
                 file_size = self.audio_file.stat().st_size
                 syslog.syslog(
-                    syslog.LOG_INFO,
+                    syslog.LOG_DEBUG,
                     f"Attempt {attempt + 1}: File exists, size: {file_size} bytes",
                 )
 
                 if file_size > MIN_AUDIO_FILE_SIZE_BYTES:
                     syslog.syslog(
-                        syslog.LOG_INFO,
+                        syslog.LOG_DEBUG,
                         f"Audio validation successful on attempt {attempt + 1}",
                     )
                     return AudioFile(
@@ -179,7 +179,7 @@ class AudioRecorder:
                     )
             else:
                 syslog.syslog(
-                    syslog.LOG_WARNING, f"Attempt {attempt + 1}: File doesn't exist yet"
+                    syslog.LOG_DEBUG, f"Attempt {attempt + 1}: File doesn't exist yet"
                 )
 
             # Small delay between attempts

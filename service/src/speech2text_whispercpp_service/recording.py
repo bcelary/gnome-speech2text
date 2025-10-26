@@ -109,7 +109,7 @@ class Recording:
             with self._state_lock:
                 if self._cancelled:
                     syslog.syslog(
-                        syslog.LOG_INFO,
+                        syslog.LOG_DEBUG,
                         f"Recording {self.config.recording_id} was cancelled, skipping transcription",
                     )
                     return
@@ -276,7 +276,7 @@ class Recording:
             )
 
             syslog.syslog(
-                syslog.LOG_INFO,
+                syslog.LOG_DEBUG,
                 f"Transcription completed: {len(self._transcribed_text)} chars",
             )
 

@@ -91,7 +91,7 @@ class Transcriber:
             text = self._normalize_text(text)
 
             syslog.syslog(
-                syslog.LOG_INFO,
+                syslog.LOG_DEBUG,
                 f"Transcription successful, length: {len(text)} chars",
             )
             return text
