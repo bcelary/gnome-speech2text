@@ -473,6 +473,7 @@ export class ModalDialog {
    * @param {number} progress - Progress 0-1
    */
   showRecording(timeText, progress) {
+    this.logger.debug(`showRecording: ${timeText}, progress=${progress.toFixed(2)}`);
     this._hideAllContainers();
 
     // Update dynamic content
@@ -498,6 +499,7 @@ export class ModalDialog {
    * Show PROCESSING state - just toggle visibility
    */
   showProcessing() {
+    this.logger.debug("showProcessing");
     this._hideAllContainers();
     this.processingContainer.show();
   }
@@ -507,6 +509,7 @@ export class ModalDialog {
    * @param {string} text - Text to display for editing
    */
   showPreview(text) {
+    this.logger.debug(`showPreview: ${text.length} chars`);
     this._hideAllContainers();
 
     // Update text
@@ -532,6 +535,7 @@ export class ModalDialog {
    * @param {string} message - Error message to display
    */
   showError(message) {
+    this.logger.debug(`showError: ${message}`);
     this._hideAllContainers();
 
     // Update error message

@@ -190,6 +190,7 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "TextTyped",
         (proxy, sender, [text, success]) => {
+          this.logger.debug(`Text typed signal: success=${success}`);
           handlers.onTextTyped?.(text, success);
         }
       )
@@ -199,6 +200,7 @@ export class DBusManager {
       this.dbusProxy.connectSignal(
         "TextCopied",
         (proxy, sender, [text, success]) => {
+          this.logger.debug(`Text copied signal: success=${success}`);
           handlers.onTextCopied?.(text, success);
         }
       )
@@ -238,7 +240,7 @@ export class DBusManager {
       (proxy) => {
         const owner = proxy.g_name_owner;
         if (!owner) {
-          this.logger.warn("Service died - name owner lost");
+          this.logger.warn("Service died - triggering UI reset");
           if (this.onServiceDied) {
             this.onServiceDied();
           }
@@ -264,7 +266,7 @@ export class DBusManager {
       this.logger.info(`ForceReset called, success: ${success}`);
       return success;
     } catch (e) {
-      this.logger.error(`ForceReset error: ${e}`);
+      this.logger.error(`Failed to force reset: ${e.message}`);
       return false;
     }
   }
@@ -301,7 +303,7 @@ export class DBusManager {
 
       return { available: false, error: "Unknown service status" };
     } catch (e) {
-      this.logger.error(`Error checking service status: ${e}`);
+      this.logger.error(`Failed to check service status: ${e}`);
 
       if (
         e.message &&
@@ -329,6 +331,7 @@ export class DBusManager {
   }
 
   async startRecording(duration, postRecordingAction) {
+    this.logger.debug(`startRecording: duration=${duration}, action=${postRecordingAction}`);
     const connectionReady = await this.ensureConnection();
     if (!connectionReady || !this.dbusProxy) {
       throw new Error("D-Bus connection not available");
@@ -339,6 +342,7 @@ export class DBusManager {
         duration,
         postRecordingAction
       );
+      this.logger.debug(`Recording started: ${recordingId}`);
       return recordingId;
     } catch (e) {
       throw new Error(`Failed to start recording: ${e.message}`);
@@ -346,6 +350,7 @@ export class DBusManager {
   }
 
   async stopRecording(recordingId) {
+    this.logger.debug(`stopRecording: ${recordingId}`);
     const connectionReady = await this.ensureConnection();
     if (!connectionReady || !this.dbusProxy) {
       throw new Error("D-Bus connection not available");
@@ -353,6 +358,7 @@ export class DBusManager {
 
     try {
       const [success] = await this.dbusProxy.StopRecordingAsync(recordingId);
+      this.logger.debug(`stopRecording success: ${success}`);
       return success;
     } catch (e) {
       throw new Error(`Failed to stop recording: ${e.message}`);
@@ -360,6 +366,7 @@ export class DBusManager {
   }
 
   async cancelRecording(recordingId) {
+    this.logger.debug(`cancelRecording: ${recordingId}`);
     const connectionReady = await this.ensureConnection();
     if (!connectionReady || !this.dbusProxy) {
       throw new Error("D-Bus connection not available");
@@ -367,6 +374,7 @@ export class DBusManager {
 
     try {
       const [success] = await this.dbusProxy.CancelRecordingAsync(recordingId);
+      this.logger.debug(`cancelRecording success: ${success}`);
       return success;
     } catch (e) {
       throw new Error(`Failed to cancel recording: ${e.message}`);
@@ -397,6 +405,7 @@ export class DBusManager {
       return this.isInitialized && this.dbusProxy !== null;
     }
 
+    this.logger.debug("Validating D-Bus connection");
     this.lastConnectionCheck = now;
 
     if (!this.dbusProxy || !this.isInitialized) {
@@ -407,6 +416,7 @@ export class DBusManager {
     try {
       // Quick test to see if the connection is still valid
       await this.dbusProxy.GetServiceStatusAsync();
+      this.logger.debug("Connection validation passed");
       return true;
     } catch (e) {
       this.logger.debug("D-Bus connection validation failed:", e.message);

@@ -1,14 +1,20 @@
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import { Logger } from "../logger.js";
 
 /**
  * Dumb ToastNotification component - just shows notifications when told
  * No logic, no state management
  */
 export class ToastNotification {
+  constructor() {
+    this.logger = new Logger("ToastNotification");
+  }
+
   /**
    * Show processing notification
    */
-  static showProcessing() {
+  showProcessing() {
+    this.logger.debug("showProcessing");
     Main.notify("Speech2Text", "Transcribing...");
   }
 
@@ -16,35 +22,40 @@ export class ToastNotification {
    * Show error notification
    * @param {string} message - Error message
    */
-  static showError(message) {
+  showError(message) {
+    this.logger.debug(`showError: ${message}`);
     Main.notify("Speech2Text Error", message);
   }
 
   /**
    * Show no speech detected notification
    */
-  static showNoSpeech() {
+  showNoSpeech() {
+    this.logger.debug("showNoSpeech");
     Main.notify("Speech2Text", "No speech detected");
   }
 
   /**
    * Show text copied notification
    */
-  static showTextCopied() {
+  showTextCopied() {
+    this.logger.debug("showTextCopied");
     Main.notify("Speech2Text", "Text copied to clipboard!");
   }
 
   /**
    * Show text typed notification
    */
-  static showTextTyped() {
+  showTextTyped() {
+    this.logger.debug("showTextTyped");
     Main.notify("Speech2Text", "Text inserted!");
   }
 
   /**
    * Show transcription cancelled notification
    */
-  static showTranscriptionCancelled() {
+  showTranscriptionCancelled() {
+    this.logger.debug("showTranscriptionCancelled");
     Main.notify("Speech2Text", "Transcription cancelled");
   }
 }

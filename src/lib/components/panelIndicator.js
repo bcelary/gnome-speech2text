@@ -1,5 +1,6 @@
 import GLib from "gi://GLib";
 import { COLORS } from "../constants.js";
+import { Logger } from "../logger.js";
 
 /**
  * Dumb PanelIndicator component - just displays icon/text when told
@@ -11,6 +12,7 @@ import { COLORS } from "../constants.js";
  */
 export class PanelIndicator {
   constructor(iconWidget, label) {
+    this.logger = new Logger("PanelIndicator");
     this.iconWidget = iconWidget;
     this.label = label;
     this.timerInterval = null;
@@ -21,6 +23,7 @@ export class PanelIndicator {
    * Show IDLE state - default icon, white color, no text
    */
   showIdle() {
+    this.logger.debug("showIdle");
     if (this.iconWidget) {
       this.iconWidget.icon_name = "radio-checked-symbolic";
       this.iconWidget.set_style("");
@@ -38,6 +41,7 @@ export class PanelIndicator {
    * @param {number} maxDuration - Max duration in seconds
    */
   showRecording(startTime, maxDuration) {
+    this.logger.debug(`showRecording: maxDuration=${maxDuration}s`);
     // Save original icon
     if (this.iconWidget && !this.originalIconName) {
       this.originalIconName = this.iconWidget.icon_name;
@@ -61,6 +65,7 @@ export class PanelIndicator {
    * Show PROCESSING state - spinner icon, red color, no text
    */
   showProcessing() {
+    this.logger.debug("showProcessing");
     this._stopTimer();
 
     if (this.iconWidget) {
@@ -116,6 +121,7 @@ export class PanelIndicator {
    * Clean up resources
    */
   destroy() {
+    this.logger.debug("destroy");
     this._stopTimer();
     this.showIdle();
     this.originalIconName = null;

@@ -49,6 +49,8 @@ export class UIManager {
 
     // Add to panel (remove existing first to avoid conflicts)
     this._addToPanel();
+
+    this.logger.info("UI initialized");
   }
 
   createPopupMenu() {
@@ -122,6 +124,7 @@ export class UIManager {
   }
 
   cleanup() {
+    this.logger.info("Cleaning up UI");
     // Clear panel label
     this.clearPanelLabel();
     // Disconnect signal handler

@@ -43,6 +43,7 @@ export class KeybindingManager {
   }
 
   cleanup() {
+    this.logger.info("Cleaning up keybinding");
     // Remove keybinding
     Main.wm.removeKeybinding("toggle-recording");
     this.currentKeybinding = null;

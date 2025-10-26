@@ -39,6 +39,7 @@ export default class Speech2TextExtension extends Extension {
 
     this.keybindingManager = new KeybindingManager(this);
     this.keybindingManager.setupKeybinding();
+    this.logger.info("Keybinding configured");
 
     this._setupSignalHandlers();
 
@@ -62,6 +63,7 @@ export default class Speech2TextExtension extends Extension {
   }
 
   _setupSignalHandlers() {
+    this.logger.debug("Setting up D-Bus signal handlers");
     this.dbusManager.connectSignals({
       onTranscriptionReady: (recordingId, text) => {
         this.uiCoordinator.handleTranscriptionReady(recordingId, text);
@@ -83,7 +85,7 @@ export default class Speech2TextExtension extends Extension {
 
   async toggleRecording() {
     try {
-      this.logger.debug("=== TOGGLE RECORDING (D-Bus) ===");
+      this.logger.debug("Toggle recording");
 
       if (!this.settings || !this.uiManager) {
         this.logger.info(
@@ -108,7 +110,7 @@ export default class Speech2TextExtension extends Extension {
         await this.uiCoordinator.startRecording(this.settings);
       }
     } catch (error) {
-      this.logger.error("Error in toggleRecording:", error);
+      this.logger.error("Failed to toggle recording:", error);
       this.uiManager.showErrorNotification(
         "Speech2Text Error",
         "An error occurred while toggling recording. Please check the logs."
@@ -151,7 +153,7 @@ export default class Speech2TextExtension extends Extension {
         this._setupSignalHandlers();
       }
     } catch (recoveryError) {
-      this.logger.error("Comprehensive auto-recovery failed:", recoveryError);
+      this.logger.error("Failed to perform auto-recovery:", recoveryError);
       this.uiManager?.showErrorNotification(
         "Speech2Text Error",
         "Extension recovery failed. Please restart GNOME Shell: Alt+F2 → 'r' → Enter"

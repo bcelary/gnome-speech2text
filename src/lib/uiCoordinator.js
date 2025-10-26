@@ -40,12 +40,14 @@ export class UICoordinator {
     // Components
     this.panelIndicator = null;
     this.modalDialog = null;
+    this.toast = null;
 
     // Settings
     this.settings = null;
   }
 
   initialize() {
+    this.logger.info("Initializing UICoordinator");
     // Create panel indicator (always exists)
     this.panelIndicator = new PanelIndicator(
       this.uiManager.iconWidget,
@@ -56,8 +58,12 @@ export class UICoordinator {
     this.modalDialog = new ModalDialog();
     this._setupModalCallbacks();
 
+    // Create toast notification helper
+    this.toast = new ToastNotification();
+
     // Start in IDLE state
     this._transitionTo(State.IDLE);
+    this.logger.info("UICoordinator initialized");
   }
 
   /**
@@ -151,8 +157,8 @@ export class UICoordinator {
 
       return true;
     } catch (error) {
-      this.logger.error("Error starting recording:", error);
-      ToastNotification.showError(
+      this.logger.error("Failed to start recording:", error);
+      this.toast.showError(
         "Failed to start recording. Please try again."
       );
       return false;
@@ -163,6 +169,7 @@ export class UICoordinator {
    * Stop recording manually
    */
   async stopRecording() {
+    this.logger.debug(`stopRecording called, current state: ${this.currentState}`);
     if (this.currentState !== State.RECORDING) {
       this.logger.debug(
         `Cannot stop recording from state: ${this.currentState}`
@@ -175,7 +182,7 @@ export class UICoordinator {
       this._transitionTo(State.PROCESSING);
       return true;
     } catch (error) {
-      this.logger.error("Error stopping recording:", error);
+      this.logger.error("Failed to stop recording:", error);
       this._handleError("Failed to stop recording");
       return false;
     }
@@ -185,6 +192,7 @@ export class UICoordinator {
    * Cancel recording/processing
    */
   async cancelRecording() {
+    this.logger.debug(`cancelRecording called, current state: ${this.currentState}`);
     if (
       this.currentState === State.IDLE ||
       this.currentState === State.PREVIEW
@@ -205,7 +213,7 @@ export class UICoordinator {
 
       // Show notification if cancelling during transcription (unless silent mode)
       if (wasProcessing && !this._isSilentMode()) {
-        ToastNotification.showTranscriptionCancelled();
+        this.toast.showTranscriptionCancelled();
       }
     } catch (error) {
       this.logger.debug("Error canceling recording:", error.message);
@@ -218,6 +226,7 @@ export class UICoordinator {
    * Handle recording completed signal from service
    */
   handleRecordingCompleted(recordingId) {
+    this.logger.debug(`handleRecordingCompleted: ${recordingId}, current state: ${this.currentState}`);
     if (recordingId !== this.currentRecordingId) {
       this.logger.debug("Ignoring recording_completed for different recording");
       return;
@@ -234,13 +243,16 @@ export class UICoordinator {
    * @private
    */
   _isSilentMode() {
-    return this.settings?.get_string("progress-display") === "silent";
+    const isSilent = this.settings?.get_string("progress-display") === "silent";
+    this.logger.debug(`_isSilentMode: ${isSilent}`);
+    return isSilent;
   }
 
   /**
    * Handle transcription ready signal from service
    */
   handleTranscriptionReady(recordingId, text) {
+    this.logger.debug(`handleTranscriptionReady: ${recordingId}, text length: ${text?.length || 0}, current state: ${this.currentState}`);
     if (recordingId !== this.currentRecordingId) {
       this.logger.debug("Ignoring transcription_ready for different recording");
       return;
@@ -258,7 +270,7 @@ export class UICoordinator {
     // Handle empty transcription
     if (!text || text.trim().length === 0) {
       if (!this._isSilentMode()) {
-        ToastNotification.showNoSpeech();
+        this.toast.showNoSpeech();
       }
       this._transitionTo(State.IDLE);
       return;
@@ -290,6 +302,7 @@ export class UICoordinator {
    * Handle recording error signal from service
    */
   handleRecordingError(recordingId, errorMessage) {
+    this.logger.info(`handleRecordingError: ${recordingId}, error: ${errorMessage}`);
     if (recordingId !== this.currentRecordingId) {
       this.logger.debug("Ignoring recording_error for different recording");
       return;
@@ -303,23 +316,26 @@ export class UICoordinator {
    * Handle text typed/copied signals (for toast notifications)
    */
   handleTextTyped() {
-    ToastNotification.showTextTyped();
+    this.logger.debug("handleTextTyped");
+    this.toast.showTextTyped();
   }
 
   handleTextCopied() {
-    ToastNotification.showTextCopied();
+    this.logger.debug("handleTextCopied");
+    this.toast.showTextCopied();
   }
 
   /**
    * Insert text from preview dialog
    */
   async insertText(text) {
+    this.logger.debug(`insertText: ${text.length} chars`);
     try {
       await this.dbusManager.typeText(text, false);
       this._transitionTo(State.IDLE);
     } catch (error) {
-      this.logger.error("Error typing text:", error);
-      ToastNotification.showError("Failed to insert text.");
+      this.logger.error("Failed to type text:", error);
+      this.toast.showError("Failed to insert text.");
     }
   }
 
@@ -327,14 +343,15 @@ export class UICoordinator {
    * Copy text from preview dialog
    */
   copyText(text) {
+    this.logger.debug(`copyText: ${text.length} chars`);
     try {
       const clipboard = St.Clipboard.get_default();
       clipboard.set_text(St.ClipboardType.CLIPBOARD, text);
-      ToastNotification.showTextCopied();
+      this.toast.showTextCopied();
       this._transitionTo(State.IDLE);
     } catch (error) {
-      this.logger.error("Error copying text:", error);
-      ToastNotification.showError("Failed to copy to clipboard");
+      this.logger.error("Failed to copy text:", error);
+      this.toast.showError("Failed to copy to clipboard");
     }
   }
 
@@ -487,7 +504,7 @@ export class UICoordinator {
         }
 
         // Show toast
-        ToastNotification.showProcessing();
+        this.toast.showProcessing();
         break;
 
       case "silent":
@@ -537,7 +554,7 @@ export class UICoordinator {
       this.modalDialog.showError(this.errorMessage);
     } else {
       // Non-critical: toast
-      ToastNotification.showError(this.errorMessage);
+      this.toast.showError(this.errorMessage);
       this._transitionTo(State.IDLE);
     }
   }
@@ -637,7 +654,7 @@ export class UICoordinator {
   _showCriticalError(message) {
     // Don't show duplicate errors if already in ERROR state
     if (this.currentState === State.ERROR) {
-      logger.debug("Already in ERROR state, ignoring duplicate error");
+      this.logger.debug("Already in ERROR state, ignoring duplicate error");
       return;
     }
     this.errorMessage = message;
@@ -677,6 +694,9 @@ export class UICoordinator {
       this.modalDialog.destroy();
       this.modalDialog = null;
     }
+
+    // Clean up toast (no destroy needed, just null reference)
+    this.toast = null;
 
     // Reset state
     this.currentState = State.IDLE;
