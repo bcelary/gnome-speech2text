@@ -5,7 +5,7 @@
   "shell-version": ["46", "47"],
   "url": "https://github.com/bcelary/gnome-speech2text/",
   "author": "Bartek Celary",
-  "version-name": "0.9.3",
+  "version-name": "0.9.4",
   "gettext-domain": "speech2text-whispercpp@bcelary.github",
   "settings-schema": "org.gnome.shell.extensions.speech2text-whispercpp"
 }
