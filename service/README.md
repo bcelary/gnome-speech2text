@@ -183,6 +183,14 @@ export WHISPER_AUTO_START="false"  # Connect to existing server only
 export WHISPER_AUTO_START="true"   # Auto-start if needed (default)
 ```
 
+### S2T_SERVICE_LOG_LEVEL
+
+**Default**: `info` | **Options**: `error`, `warn`, `info`, `debug`
+
+```bash
+export S2T_SERVICE_LOG_LEVEL="debug"  # Verbose logging
+```
+
 ## Setting up whisper.cpp
 
 1. **Build whisper.cpp with server support**:

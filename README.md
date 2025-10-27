@@ -119,6 +119,7 @@ WHISPER_MODEL=small           # tiny, base, small, medium, etc.
 WHISPER_LANGUAGE=auto         # auto, en, es, fr, de, etc.
 WHISPER_VAD_MODEL=auto        # auto, none, silero-v5.1.2
 WHISPER_SERVER_URL=http://localhost:8080
+S2T_SERVICE_LOG_LEVEL=info    # error, warn, info, debug
 ```
 
 After editing, restart GNOME Shell or log out/in.
@@ -128,6 +129,11 @@ After editing, restart GNOME Shell or log out/in.
 - **Post-Recording Action** - Show preview dialog / Auto-type text (X11 only) / Copy to clipboard only / Auto-type and copy (X11 only)
 - **Keyboard Shortcut** - Default: Super+Alt+Space
 - **Recording Duration** - 10 seconds to 15 minutes
+
+**Extension Logging** (optional - add to `~/.config/environment.d/custom-env.conf`):
+```bash
+S2T_LOG_LEVEL=info    # error, warn, info, debug
+```
 
 ![prefs](./images/prefs.png)
 > *Extension preferences for customizing behavior and keyboard shortcuts*
