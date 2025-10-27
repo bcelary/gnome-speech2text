@@ -33,7 +33,9 @@ All three must be installed separately (see Installation below).
 
 ## Installation
 
-### Full Installation
+### Quick Install (Recommended)
+
+Install extension from [extensions.gnome.org](https://extensions.gnome.org/extension/8706/speech2text-with-whispercpp/), then:
 
 **1. Install Dependencies**
 
@@ -82,24 +84,6 @@ cd ..
 cmake -B build -DCMAKE_INSTALL_PREFIX=~/.local
 ```
 
-**3. Install Extension & Service**
-
-```bash
-git clone https://github.com/bcelary/gnome-speech2text.git
-cd gnome-speech2text
-make install  # Installs both service and extension
-```
-
-Restart GNOME Shell (X11: `Alt+F2` → `r`, Wayland: log out/in)
-
-### Service Only (Extension from GNOME Extensions - FUTURE)
-
-If you installed the extension from extensions.gnome.org:
-
-**1. Install Dependencies** (same as above)
-
-**2. Install whisper.cpp** (same as above)
-
 **3. Install Service**
 
 ```bash
@@ -108,7 +92,21 @@ pipx install --system-site-packages \
 speech2text-whispercpp-setup
 ```
 
-Restart GNOME Shell
+Restart GNOME Shell (X11: `Alt+F2` → `r`, Wayland: log out/in)
+
+### Development Install
+
+For developing or contributing:
+
+```bash
+git clone https://github.com/bcelary/gnome-speech2text.git
+cd gnome-speech2text
+make install  # Installs both service and extension
+```
+
+Follow steps 1-2 above for dependencies and whisper.cpp.
+
+Restart GNOME Shell (X11: `Alt+F2` → `r`, Wayland: log out/in)
 
 ## Configuration
 
@@ -150,15 +148,9 @@ gnome-extensions enable speech2text-whispercpp@bcelary.github
 
 **View logs:**
 ```bash
-./scripts/tail-logs.sh              # Filters extension's logs
-journalctl -f -t speech2text-whispercpp-service  # Service logs
+./scripts/tail-logs.sh              # Extension logs
+./scripts/tail-service-logs.sh      # Service logs
 ```
-
-**Known Issues:**
-
-*whisper-server deadlock after multiple requests* - Fixed in current version by using `-nc` flag. If you experience transcription timeouts after 5-7 recordings, ensure you're running the latest version. The `-nc` flag disables context retention between requests, preventing resource leaks. See [issue #6](../../issues/6) and [whisper.cpp #3358](https://github.com/ggml-org/whisper.cpp/issues/3358) for details.
-
-*Transcription cancellation limitation* - While you can cancel during processing, the whisper.cpp server continues transcribing in the background until completion. The transcription result is discarded, but server resources remain occupied until the process finishes.
 
 **Note:** Text insertion requires X11. On Wayland, use clipboard mode.
 
@@ -166,7 +158,6 @@ journalctl -f -t speech2text-whispercpp-service  # Service logs
 
 ```bash
 make help                    # See all available targets
-./scripts/tail-logs.sh       # View extension logs
 ```
 
 For service development, see [service/README.md](./service/README.md).
