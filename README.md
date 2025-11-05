@@ -140,9 +140,10 @@ S2T_LOG_LEVEL=info    # error, warn, info, debug
 
 ## Usage
 
-1. Press `Super+Alt+Space` (or click microphone icon)
+1. Press `Super+Alt+Space` (or click the extension's round circle icon)
 2. Speak
-3. Obtain the result or Review transcription and Act (if using preview action)
+3. Press `Super+Alt+Space` (or icon) again to stop recording
+4. Obtain the result or Review transcription and Act (if using preview action)
 
 ## Troubleshooting
 
