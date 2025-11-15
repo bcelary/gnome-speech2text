@@ -174,13 +174,31 @@ export WHISPER_VAD_MODEL="silero-v5.1.2"  # Use specific model
 
 ### WHISPER_AUTO_START
 
-Auto-start whisper.cpp server if not running.
+Control whether the service manages the whisper.cpp server lifecycle (start/stop/restart).
 
 **Default**: `true`
 
+When `true`: Service can start server if needed, stop it on exit, and restart after requests.
+When `false`: Service never touches server process (connect to existing server only).
+
+**Important**: Only works for localhost servers (safety constraint). Remote servers are never managed.
+
 ```bash
-export WHISPER_AUTO_START="false"  # Connect to existing server only
-export WHISPER_AUTO_START="true"   # Auto-start if needed (default)
+export WHISPER_AUTO_START="true"   # Manage server lifecycle (default)
+export WHISPER_AUTO_START="false"  # Connect to existing server, don't manage it
+```
+
+### WHISPER_RESTART_AFTER_REQUEST
+
+Restart whisper.cpp server after each transcription request to prevent stuck state.
+
+**Default**: `true`
+
+The whisper.cpp server occasionally becomes unresponsive after several requests. This setting automatically restarts the server after each successful transcription to maintain reliability.
+
+```bash
+export WHISPER_RESTART_AFTER_REQUEST="true"   # Auto-restart after each request (default)
+export WHISPER_RESTART_AFTER_REQUEST="false"  # Keep server running between requests
 ```
 
 ### S2T_SERVICE_LOG_LEVEL
@@ -353,14 +371,16 @@ This service includes a reusable `WhisperCppClient` class that can be used indep
 ```python
 from whisper_cpp_client import WhisperCppClient
 
-# Initialize (auto-starts server if needed)
+# Initialize client
 client = WhisperCppClient(
     base_url="http://localhost:8080",
-    auto_start=True,
+    auto_start=True,  # Manage server lifecycle: start/stop/restart (default)
     model_file="base",
     language="auto",
-    vad_model="auto"  # Auto-discover VAD model, or use "silero-v5.1.2" or None
+    vad_model="auto",  # Auto-discover VAD model, or use "silero-v5.1.2" or None
+    restart_after_request=True  # Restart server after each request (default)
 )
+# If auto_start=False, service connects to existing server without managing it
 
 # Check health
 health = client.health_check()

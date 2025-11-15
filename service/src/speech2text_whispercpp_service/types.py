@@ -43,6 +43,7 @@ class ServiceConfig:
     vad_model: Optional[str]
     auto_start: bool
     transcription_timeout: float
+    restart_after_request: bool
 
 
 @dataclass(frozen=True)

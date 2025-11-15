@@ -43,6 +43,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
     DEFAULT_WHISPER_VAD_MODEL = "auto"
     DEFAULT_WHISPER_AUTO_START = "true"
     DEFAULT_WHISPER_TIMEOUT = "30.0"
+    DEFAULT_WHISPER_RESTART_AFTER_REQUEST = "true"
 
     def __init__(self) -> None:
         """Initialize D-Bus service and recording manager."""
@@ -62,6 +63,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             model_file=self.service_config.model_file,
             language=self.service_config.language,
             vad_model=self.service_config.vad_model,
+            restart_after_request=self.service_config.restart_after_request,
         )
 
         # Initialize components
@@ -124,6 +126,17 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
         except ValueError:
             transcription_timeout = float(self.DEFAULT_WHISPER_TIMEOUT)
 
+        # Parse restart-after-request flag
+        restart_after_request_str = os.environ.get(
+            "WHISPER_RESTART_AFTER_REQUEST", self.DEFAULT_WHISPER_RESTART_AFTER_REQUEST
+        ).lower()
+        restart_after_request = restart_after_request_str not in (
+            "false",
+            "0",
+            "no",
+            "off",
+        )
+
         return ServiceConfig(
             server_url=server_url,
             model_file=model_file,
@@ -131,6 +144,7 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             vad_model=vad_model,
             auto_start=auto_start,
             transcription_timeout=transcription_timeout,
+            restart_after_request=restart_after_request,
         )
 
     def _log_environment_config(self) -> None:
@@ -159,6 +173,10 @@ class Speech2TextService(dbus.service.Object):  # type: ignore
             "WHISPER_TIMEOUT": (
                 os.environ.get("WHISPER_TIMEOUT"),
                 self.DEFAULT_WHISPER_TIMEOUT,
+            ),
+            "WHISPER_RESTART_AFTER_REQUEST": (
+                os.environ.get("WHISPER_RESTART_AFTER_REQUEST"),
+                self.DEFAULT_WHISPER_RESTART_AFTER_REQUEST,
             ),
             "XDG_SESSION_TYPE": (os.environ.get("XDG_SESSION_TYPE"), None),
         }

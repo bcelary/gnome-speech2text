@@ -9,6 +9,7 @@ It handles server health checking, auto-starting, and audio transcription.
 import contextlib
 import re
 import subprocess
+import syslog
 import threading
 import time
 from pathlib import Path
@@ -26,23 +27,28 @@ class WhisperCppClient:
 
     Args:
         base_url: Base URL of the whisper.cpp server (e.g., "http://localhost:8080")
-        auto_start: Whether to automatically start the server if not running (localhost only)
-        model_file: Model file name to use for auto-start. Examples:
+        auto_start: Whether to manage the server lifecycle (start/stop/restart).
+            When True: Service can start server if needed, stop on exit, and restart after requests.
+            When False: Service never touches server process (connect to existing server only).
+            Only works for localhost servers (safety constraint).
+        model_file: Model file name to use when starting server. Examples:
             - Base models: "tiny", "base", "small", "medium"
             - Large models: "large-v1", "large-v2", "large-v3", "large-v3-turbo"
             - English-only: "tiny.en", "base.en", "small.en", "medium.en"
             - Quantized: "base-q5_1", "base-q8_0", "small-q5_1", "medium-q8_0"
-        language: Language code for auto-start server (default: "auto" for auto-detection).
+        language: Language code for server (default: "auto" for auto-detection).
             Examples: "en", "es", "fr", "de", "auto"
-        vad_model: VAD (Voice Activity Detection) model name for auto-start (default: "auto").
+        vad_model: VAD (Voice Activity Detection) model name (default: "auto").
             When "auto" (default), automatically discovers VAD models in ~/.cache/whisper.cpp/
             matching pattern: ggml-silero-v*.bin (e.g., silero-v5.1.2, silero-v1.2.3-alpha)
             When specified explicitly, uses that model name.
             When None, disables VAD.
             Path format: ~/.cache/whisper.cpp/ggml-{vad_model}.bin
+        restart_after_request: Restart server after each successful transcription to prevent
+            stuck states (default: True). Only applies if auto_start=True.
 
     Example:
-        >>> client = WhisperCppClient(base_url="http://localhost:8080")
+        >>> client = WhisperCppClient(base_url="http://localhost:8080", auto_start=True)
         >>> with open("audio.wav", "rb") as f:
         ...     text = client.audio.transcriptions.create(file=f)
         >>> print(text)
@@ -55,11 +61,14 @@ class WhisperCppClient:
         model_file: str = "small",
         language: str = "auto",
         vad_model: Optional[str] = "auto",
+        restart_after_request: bool = True,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model_file = model_file
         self.language = language
         self.vad_model = self._resolve_vad_model(vad_model)
+        self.auto_start = auto_start
+        self.restart_after_request = restart_after_request
         self._server_process: Optional[subprocess.Popen[bytes]] = None
 
         # Determine if this is a localhost server
@@ -67,11 +76,23 @@ class WhisperCppClient:
         self.is_localhost = parsed_url.hostname in ("localhost", "127.0.0.1", "::1")
 
         # Auto-start server if enabled and localhost
-        if auto_start and self.is_localhost:
+        if self._can_manage_server():
             self.start_server_if_needed()
 
         # Create nested resource objects for OpenAI-compatible API
         self._audio_resource = AudioResource(self)
+
+    def _can_manage_server(self) -> bool:
+        """Check if this client is allowed to manage the server process.
+
+        Server management (start/stop/restart) is only allowed when:
+        - auto_start is enabled (user wants service to manage server)
+        - Server is on localhost (safety constraint - never manage remote servers)
+
+        Returns:
+            bool: True if server management is allowed
+        """
+        return self.auto_start and self.is_localhost
 
     @property
     def audio(self) -> "AudioResource":
@@ -169,14 +190,15 @@ class WhisperCppClient:
     def start_server_if_needed(self) -> bool:
         """Start whisper.cpp server if not already running
 
-        Only works for localhost servers. Checks if server is running,
-        and if not, attempts to start it with the configured model file.
+        Only works if server management is enabled (auto_start=True and localhost).
+        Checks if server is running, and if not, attempts to start it with the
+        configured model file.
 
         Returns:
             bool: True if server is running (was already running or successfully started),
                   False otherwise
         """
-        if not self.is_localhost:
+        if not self._can_manage_server():
             return False
 
         # Check if server is already running
@@ -307,7 +329,11 @@ class WhisperCppClient:
             raise RuntimeError(f"Failed to start whisper-server: {str(e)}") from e
 
     def stop_server(self) -> None:
-        """Stop the whisper.cpp server if it was started by this client"""
+        """Stop the whisper.cpp server if it was started by this client
+
+        Only stops servers that were started by this client instance.
+        Safe to call even if no server is running.
+        """
         if self._server_process and self._server_process.poll() is None:
             try:
                 self._server_process.terminate()
@@ -317,6 +343,23 @@ class WhisperCppClient:
                 self._server_process.wait()
             finally:
                 self._server_process = None
+
+    def restart_server(self) -> None:
+        """Restart whisper.cpp server if management is enabled
+
+        Only works if server management is enabled (auto_start=True and localhost).
+        Stops the current server and starts a fresh one. This can help recover from
+        stuck server states.
+
+        Note: stop_server() blocks until process terminates, so no sleep needed.
+        start_server_if_needed() handles port binding retries internally.
+        """
+        if not self._can_manage_server():
+            return
+
+        self.stop_server()
+        self.start_server_if_needed()
+        syslog.syslog(syslog.LOG_DEBUG, "Whisper-server restarted")
 
     def __del__(self) -> None:
         """Cleanup: stop server on destruction"""
@@ -412,7 +455,15 @@ class TranscriptionResource:
             )
             response.raise_for_status()
 
-            return self._parse_response(response)
+            result = self._parse_response(response)
+
+            # Restart server after successful transcription if enabled
+            if self._client.restart_after_request:
+                with contextlib.suppress(Exception):
+                    # Don't fail transcription if restart fails
+                    self._client.restart_server()
+
+            return result
 
         except requests.exceptions.Timeout as e:
             # Timeout - transcription took too long
@@ -529,7 +580,15 @@ class TranscriptionResource:
 
         # Return result
         if "response" in result_container:
-            return result_container["response"]
+            result = result_container["response"]
+
+            # Restart server after successful transcription if enabled
+            if self._client.restart_after_request:
+                with contextlib.suppress(Exception):
+                    # Don't fail transcription if restart fails
+                    self._client.restart_server()
+
+            return result
         else:
             raise RuntimeError("Request thread finished without result or error")
 
