@@ -334,15 +334,18 @@ class WhisperCppClient:
         Only stops servers that were started by this client instance.
         Safe to call even if no server is running.
         """
-        if self._server_process and self._server_process.poll() is None:
-            try:
-                self._server_process.terminate()
-                self._server_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self._server_process.kill()
+        if self._server_process:
+            if self._server_process.poll() is None:
+                try:
+                    self._server_process.terminate()
+                    self._server_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self._server_process.kill()
+                    self._server_process.wait()
+            else:
+                # Already exited - reap the zombie
                 self._server_process.wait()
-            finally:
-                self._server_process = None
+            self._server_process = None
 
     def restart_server(self) -> None:
         """Restart whisper.cpp server if management is enabled

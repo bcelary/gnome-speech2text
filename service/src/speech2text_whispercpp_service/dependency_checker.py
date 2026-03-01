@@ -40,34 +40,32 @@ class DependencyChecker:
         Returns:
             DependencyCheckResult with status and missing dependencies
         """
-        if self._checked:
-            return DependencyCheckResult(
-                all_ok=len(self._missing_deps) == 0,
-                missing_dependencies=self._missing_deps.copy(),
-            )
-
         missing: List[str] = []
 
-        # Check FFmpeg
-        if not self._check_ffmpeg():
-            missing.append("ffmpeg")
+        if self._checked:
+            # Static deps (ffmpeg, clipboard, typing tools) are cached
+            missing.extend(self._missing_deps)
+        else:
+            # Check FFmpeg
+            if not self._check_ffmpeg():
+                missing.append("ffmpeg")
 
-        # Check clipboard tools (session-type specific)
-        clipboard_error = self._check_clipboard_tools()
-        if clipboard_error:
-            missing.append(clipboard_error)
+            # Check clipboard tools (session-type specific)
+            clipboard_error = self._check_clipboard_tools()
+            if clipboard_error:
+                missing.append(clipboard_error)
 
-        # Check typing tools (X11 only)
-        typing_error = self._check_typing_tools()
-        if typing_error:
-            missing.append(typing_error)
+            # Check typing tools (X11 only)
+            typing_error = self._check_typing_tools()
+            if typing_error:
+                missing.append(typing_error)
 
-        # Check server health
+            self._missing_deps = missing.copy()
+            self._checked = True
+
+        # Always re-check server health (server can crash and restart)
         if not self._check_server_health():
             missing.append(f"whisper.cpp server not responding at {self.server_url}")
-
-        self._missing_deps = missing
-        self._checked = True
 
         return DependencyCheckResult(
             all_ok=len(missing) == 0, missing_dependencies=missing

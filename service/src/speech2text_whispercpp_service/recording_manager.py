@@ -91,6 +91,15 @@ class RecordingManager:
             if self._current_recording is not None:
                 raise Exception("Recording already in progress")
 
+        # Ensure whisper server is running (may have died, e.g. after suspend/resume)
+        if self.whisper_client._can_manage_server():
+            try:
+                self.whisper_client.start_server_if_needed()
+            except Exception as e:
+                syslog.syslog(
+                    syslog.LOG_WARNING, f"Failed to start whisper server: {e}"
+                )
+
         # Check dependencies
         dep_result = self.dependency_checker.check_dependencies()
         if not dep_result.all_ok:
