@@ -56,8 +56,11 @@ sudo pacman -S python-dbus python-gobject ffmpeg wl-clipboard xdotool xclip
 **Option 1: Install from GitHub** (recommended):
 
 ```bash
-# Install directly from GitHub using pipx
-pipx install --system-site-packages 'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service-whispercpp'
+# Install latest from GitHub using pipx
+pipx install --system-site-packages 'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service'
+
+# Or install a specific version
+pipx install --system-site-packages 'git+https://github.com/bcelary/gnome-speech2text.git@v0.9.5#subdirectory=service'
 
 # Run setup to configure D-Bus
 speech2text-whispercpp-setup
@@ -68,7 +71,7 @@ speech2text-whispercpp-setup
 ```bash
 # Clone the repository
 git clone https://github.com/bcelary/gnome-speech2text.git
-cd gnome-speech2text/service-whispercpp
+cd gnome-speech2text/service
 
 # Install from GitHub (will do more checks but result same as Option 1)
 make install

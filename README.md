@@ -87,8 +87,14 @@ cmake -B build -DCMAKE_INSTALL_PREFIX=~/.local
 **3. Install Service**
 
 ```bash
+# Install latest
 pipx install --system-site-packages \
   'git+https://github.com/bcelary/gnome-speech2text.git#subdirectory=service'
+
+# Or install a specific version
+pipx install --system-site-packages \
+  'git+https://github.com/bcelary/gnome-speech2text.git@v0.9.5#subdirectory=service'
+
 speech2text-whispercpp-setup
 ```
 
