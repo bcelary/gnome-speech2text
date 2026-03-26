@@ -225,6 +225,12 @@ export default class Speech2TextPreferences extends ExtensionPreferences {
   }
 
   _captureShortcut(window, settings, button) {
+    // Note: shortcuts containing keys that are grabbed by GNOME Shell at the
+    // compositor level (e.g. <Super>space → toggle-application-view) cannot be
+    // captured here — the compositor steals the event before GTK sees it.
+    // Workaround: set such shortcuts directly via dconf, e.g.:
+    //   dconf write /org/gnome/shell/extensions/speech2text-whispercpp/toggle-recording \
+    //     "['<Control><Super>space']"
     const dialog = new Gtk.MessageDialog({
       transient_for: window,
       modal: true,
